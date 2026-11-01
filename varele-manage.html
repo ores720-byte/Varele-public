@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Varèle · Store management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{--bg:#fff;--ink:#16161a;--mute:#76736d;--line:#e8e5e0;--soft:#f6f6f4;--navy:#111;--ok:#2d6a3e;--okbg:#eef6ef;--warn:#8a5a0b;--warnbg:#fbf5e6;--err:#a32a2a;--errbg:#fbeeee}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(135deg,#0ea5a4 0%,#2563eb 52%,#4338ca 100%);background-attachment:fixed;min-height:100vh;color:var(--ink);font:15px/1.5 "DM Sans",system-ui,sans-serif}
+.sec-h h2{color:#fff;text-shadow:0 1px 12px rgba(0,0,0,.15)}
+.sec-h .muted{color:rgba(255,255,255,.85)!important}
+.lock{background:transparent}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+section:not([hidden]) .kpi,section:not([hidden]) .panel,section:not([hidden]) .insight{animation:rise .6s cubic-bezier(.2,.8,.2,1) both}
+section:not([hidden]) .kpi:nth-child(2){animation-delay:.05s}section:not([hidden]) .kpi:nth-child(3){animation-delay:.1s}section:not([hidden]) .kpi:nth-child(4){animation-delay:.15s}section:not([hidden]) .kpi:nth-child(5){animation-delay:.2s}section:not([hidden]) .kpi:nth-child(6){animation-delay:.25s}
+.kpi{transition:transform .25s,box-shadow .25s}.kpi:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(15,23,42,.12)}
+.bars i{transition:height .9s cubic-bezier(.2,.8,.2,1)}
+.chart{display:grid;grid-template-columns:52px 1fr;column-gap:.5rem;--h:200px}
+.yax{position:relative;height:var(--h);font-size:.7rem;color:var(--mute)}
+.yax span{position:absolute;right:0;transform:translateY(50%);white-space:nowrap;font-variant-numeric:tabular-nums}
+.yax span:last-child{transform:translateY(0)}
+.yax span:first-child{transform:translateY(100%)}
+.plotwrap{min-width:0}
+.plot{position:relative;height:var(--h);border-left:1px solid #d8d4cc;border-bottom:1px solid #aaa6a0;background:repeating-linear-gradient(to top,transparent 0,transparent calc(25% - 1px),#eeece8 calc(25% - 1px),#eeece8 25%)}
+.plot .cols{position:absolute;inset:0;display:flex;align-items:flex-end;gap:3px;padding:0 3px}
+.col{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;position:relative;cursor:default}
+.col .bar{width:100%;max-width:34px;background:linear-gradient(180deg,#2563eb,#4338ca);border-radius:4px 4px 0 0;min-height:0;transition:height .9s cubic-bezier(.2,.8,.2,1),filter .2s}
+.col:hover .bar{filter:brightness(1.18)}
+.col .v{font-size:.66rem;color:var(--ink);font-variant-numeric:tabular-nums;margin-bottom:3px;white-space:nowrap;line-height:1}
+.col .v.hide{display:none}
+.xl{display:flex;gap:3px;padding:0 3px;margin-top:.35rem}
+.xl span{flex:1;min-width:0;text-align:center;font-size:.64rem;color:var(--mute);white-space:nowrap;overflow:visible}
+.chartsum{display:grid;grid-template-columns:repeat(2,1fr);gap:.5rem;margin-top:.9rem;padding-top:.8rem;border-top:1px solid var(--line)}
+@media(min-width:700px){.chartsum{grid-template-columns:repeat(4,1fr)}}
+.chartsum div{font-size:.78rem;color:var(--mute)}
+.chartsum b{display:block;font:600 1.15rem "Cormorant Garamond",Georgia,serif;color:var(--ink);font-variant-numeric:tabular-nums}
+.chartlegend{display:flex;gap:.9rem;flex-wrap:wrap;font-size:.78rem;color:var(--mute);margin:0 0 .6rem}
+.chartlegend i{display:inline-block;width:10px;height:10px;background:linear-gradient(180deg,#2563eb,#4338ca);margin-right:.35rem;vertical-align:middle;border-radius:2px}
+.hbar .t i{transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.panel{transition:box-shadow .25s}.panel:hover{box-shadow:0 8px 22px rgba(15,23,42,.1)}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+h1,h2,h3{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;margin:0}
+button,input,select{font:inherit}
+button{cursor:pointer}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.btn{background:var(--navy);color:#fff;border:0;padding:.6rem 1rem;border-radius:2px}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn.sm{padding:.35rem .7rem;font-size:.82rem}
+input,select{padding:.55rem .7rem;border:1px solid var(--line);border-radius:2px;background:#fff;color:var(--ink)}
+.muted{color:var(--mute)}
+.msg{font-size:.9rem;min-height:1.2em;color:var(--mute)}
+.msg.err{color:var(--err)}.msg.ok{color:var(--ok)}
+
+.top{background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.7rem 1rem;position:sticky;top:0;z-index:5;flex-wrap:wrap}
+.top .wm{font:600 1.3rem "Cormorant Garamond",Georgia,serif;letter-spacing:.05em}
+.top .sub{font-size:.8rem;opacity:.7;margin-left:.6rem}
+.top .acts{display:flex;gap:.45rem;align-items:center;flex-wrap:wrap}
+.top button{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.35);padding:.35rem .75rem;border-radius:2px;font-size:.82rem}
+.top .who{font-size:.8rem;opacity:.75}
+.tabs{background:#fff;border-bottom:1px solid var(--line);display:flex;gap:.1rem;overflow-x:auto;padding:0 .5rem;position:sticky;top:var(--topH,52px);z-index:4}
+.tabs button{background:none;border:0;padding:.85rem .75rem;color:var(--mute);border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
+main{padding:1.1rem;max-width:1280px;margin:0 auto}
+.sec-h{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
+.sec-h h2{font-size:1.9rem}
+.grid-k{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem}
+@media(min-width:900px){.grid-k{grid-template-columns:repeat(6,1fr)}}
+.kpi{background:#fff;border:1px solid var(--line);padding:.95rem}
+.kpi .l{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.kpi .v{font:600 1.7rem "Cormorant Garamond",Georgia,serif;margin-top:.2rem}
+.kpi .n{font-size:.78rem;color:var(--mute)}
+.panels{display:grid;gap:.7rem;margin-top:.7rem}
+@media(min-width:900px){.panels{grid-template-columns:1.5fr 1fr}}
+.panel{background:#fff;border:1px solid var(--line);padding:1rem;min-width:0}
+.panel h3{font-size:1.25rem;margin-bottom:.6rem}
+.panel.full{grid-column:1/-1}
+.bars{display:flex;align-items:flex-end;gap:5px;height:160px;border-bottom:1px solid var(--line)}
+.bars div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;min-width:0}
+.bars i{display:block;width:100%;background:var(--ink);min-height:2px}
+.bars b{font-weight:400;font-size:.62rem;color:var(--mute);margin-top:.25rem;white-space:nowrap;overflow:hidden;max-width:100%}
+.hbar{display:grid;grid-template-columns:minmax(90px,150px) 1fr 70px;gap:.6rem;align-items:center;margin:.4rem 0;font-size:.86rem}
+.hbar .t{height:12px;background:var(--soft);position:relative}
+.hbar .t i{position:absolute;left:0;top:0;bottom:0;background:var(--ink)}
+.hbar span.r{text-align:right;color:var(--mute)}
+.hbar span.l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+table{width:100%;border-collapse:collapse;background:#fff}
+th,td{text-align:left;padding:.55rem .5rem;border-bottom:1px solid var(--line);font-size:.86rem;vertical-align:top}
+th{font-size:.7rem;letter-spacing:.07em;text-transform:uppercase;color:var(--mute);font-weight:500;background:#fbfbfa;position:sticky;top:0}
+.wrapx{overflow:auto;border:1px solid var(--line);background:#fff;max-height:70vh}
+.tag{display:inline-block;padding:.1rem .45rem;font-size:.72rem;border:1px solid var(--line);border-radius:999px;white-space:nowrap}
+.tag.pending{color:var(--warn);border-color:#e6d3a6;background:var(--warnbg)}
+.tag.paid,.tag.shipped,.tag.delivered,.tag.sent{color:var(--ok);border-color:#b9d6c0;background:var(--okbg)}
+.tag.cancelled,.tag.failed{color:var(--err);border-color:#e3b9b9;background:var(--errbg)}
+.tag.held,.tag.processing{color:var(--warn);border-color:#e6d3a6;background:var(--warnbg)}
+.filters{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.8rem}
+.filters input{flex:1;min-width:12rem}
+.addr{font-size:.8rem;color:var(--mute);max-width:26ch}
+.empty{padding:2rem;text-align:center;color:var(--mute);background:#fff;border:1px dashed var(--line)}
+.notice{padding:.85rem 1rem;border:1px solid;margin-bottom:.8rem;font-size:.9rem}
+.notice.err{background:var(--errbg);border-color:#e3b9b9;color:var(--err)}
+.notice.warn{background:var(--warnbg);border-color:#e6d3a6;color:var(--warn)}
+.notice.ok{background:var(--okbg);border-color:#b9d6c0;color:var(--ok)}
+.insight{background:#fff;border:1px solid var(--line);padding:1rem 1.1rem;margin-bottom:.6rem;display:grid;grid-template-columns:auto 1fr;gap:.8rem;align-items:start}
+.insight .dot{width:10px;height:10px;border-radius:50%;margin-top:.45rem;background:var(--mute)}
+.insight.good .dot{background:var(--ok)}.insight.warn .dot{background:#c98a10}.insight.bad .dot{background:var(--err)}
+.insight h4{margin:0 0 .2rem;font-size:1rem;font-weight:600}
+.insight p{margin:0;color:#3b3935;font-size:.92rem}
+.insight .act{margin-top:.35rem;font-size:.86rem;color:var(--ink)}
+.lock{min-height:100vh;display:grid;place-items:center;padding:1.5rem}
+.lockbox{background:#fff;border:1px solid var(--line);padding:2rem 1.75rem;width:min(380px,100%);text-align:center}
+.lockbox .wm{font:600 1.8rem "Cormorant Garamond",Georgia,serif;letter-spacing:.04em}
+.lockbox p{color:var(--mute);margin:.4rem 0 1rem}
+.lockbox form{display:grid;gap:.7rem}
+.lockbox input{width:100%}
+.lockbox .btn{width:100%;padding:.8rem}
+.lockbox a{color:var(--ink)}
+
+/* ---------- refined look ---------- */
+:root{--r:14px;--sh:0 1px 2px rgba(15,23,42,.05),0 8px 24px rgba(15,23,42,.08);--sh2:0 2px 4px rgba(15,23,42,.06),0 18px 40px rgba(15,23,42,.14);--ink:#101418;--mute:#6b7280;--line:#e7eaf0;--soft:#f7f8fb}
+body{font-family:"Manrope",system-ui,-apple-system,sans-serif;font-feature-settings:"ss01","cv11";-webkit-font-smoothing:antialiased;letter-spacing:-.005em}
+h1,h2,h3,h4,.kpi .v,.hello h1,.wm{font-family:"Playfair Display",Georgia,serif;letter-spacing:-.01em}
+.sec-h h2{font-size:2.1rem;font-weight:500}
+.top{background:rgba(16,20,24,.72);backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);border-bottom:1px solid rgba(255,255,255,.08);padding:.8rem 1.2rem}
+.top .wm{font-style:italic;font-size:1.4rem}
+.top button{border-radius:999px;padding:.4rem .95rem;border-color:rgba(255,255,255,.22);transition:background .2s,transform .15s}
+.top button:hover{background:rgba(255,255,255,.12)}
+.top button:active{transform:scale(.97)}
+.tabs{background:rgba(255,255,255,.78);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:.35rem .6rem;gap:.2rem}
+.tabs button{border-radius:999px;border-bottom:0;padding:.55rem .95rem;font-weight:500;transition:background .25s,color .25s,transform .2s}
+.tabs button:hover{background:rgba(16,20,24,.05);color:var(--ink)}
+.tabs button:active{transform:scale(.96)}
+.tabs button[aria-selected=true]{background:var(--ink);color:#fff;font-weight:600;box-shadow:0 6px 16px rgba(16,20,24,.25)}
+main{padding:1.4rem 1.2rem 3rem}
+.panel,.kpi,.insight,.wrapx,.empty,.notice,.lockbox{border-radius:var(--r);border:1px solid rgba(231,234,240,.9);box-shadow:var(--sh);background:rgba(255,255,255,.96)}
+.wrapx{border-radius:var(--r);overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.wrapx table th:first-child{border-top-left-radius:var(--r)}
+.kpi{padding:1.1rem 1.15rem;transition:transform .3s cubic-bezier(.2,.8,.2,1),box-shadow .3s}
+.kpi:hover{transform:translateY(-4px);box-shadow:var(--sh2)}
+.kpi .l{font-size:.68rem;font-weight:600;letter-spacing:.12em}
+.kpi .v{font-size:2rem;font-weight:500;margin-top:.35rem}
+.panel{padding:1.25rem 1.3rem}
+.panel h3{font-size:1.35rem;font-weight:500;margin-bottom:.8rem}
+.panel:hover,.insight:hover{box-shadow:var(--sh2)}
+.insight{transition:transform .25s,box-shadow .25s,border-color .25s;padding:1.1rem 1.2rem;margin-bottom:.7rem}
+.insight:hover{transform:translateY(-2px)}
+.insight h4{font-size:1.1rem;font-weight:500}
+.insight p{font-size:.92rem;line-height:1.6}
+.insight .dot{width:9px;height:9px;box-shadow:0 0 0 4px rgba(0,0,0,.04)}
+button,input,select,textarea{font-family:inherit}
+input,select,textarea{border-radius:10px;border:1px solid #d9dde6;background:#fff;padding:.6rem .8rem;transition:border-color .2s,box-shadow .2s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 4px rgba(16,20,24,.07)}
+.btn{border-radius:999px;padding:.62rem 1.2rem;font-weight:600;letter-spacing:.01em;background:var(--ink);transition:transform .15s,box-shadow .25s,background .25s}
+.btn:hover{box-shadow:0 8px 20px rgba(16,20,24,.22);transform:translateY(-1px)}
+.btn:active{transform:scale(.97)}
+.btn.ghost{border-radius:999px;border:1px solid #d9dde6;transition:background .2s,border-color .2s}
+.btn.ghost:hover{background:var(--soft);border-color:#c4c9d4}
+.btn.sm{padding:.38rem .8rem;font-size:.8rem}
+.tag{border-radius:999px;padding:.15rem .6rem;font-weight:600;font-size:.7rem;letter-spacing:.02em}
+table th{font-weight:600;background:#fafbfd}
+table td{transition:background .2s}
+table tbody tr:hover td{background:#fafbfd}
+.hbar .t{border-radius:999px;height:10px}
+.hbar .t i{border-radius:999px;background:linear-gradient(90deg,#0ea5a4,#4338ca)}
+.col .bar,.bars i{border-radius:6px 6px 0 0}
+.notice{border-radius:var(--r);padding:1rem 1.1rem}
+.lock{background:linear-gradient(135deg,#0ea5a4 0%,#2563eb 52%,#4338ca 100%)}
+.lockbox{border-radius:20px;box-shadow:0 30px 60px rgba(0,0,0,.25);padding:2.4rem 2rem}
+.lockbox .wm{font-style:italic;font-size:2rem}
+/* motion */
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+section:not([hidden]){animation:fadeUp .45s cubic-bezier(.2,.8,.2,1) both}
+.empty{animation:fadeUp .6s ease both}
+#status:not([hidden]){background:linear-gradient(90deg,#fff 30%,#f0f2f7 50%,#fff 70%);background-size:200% 100%;animation:shimmer 1.6s linear infinite}
+.lockbox{animation:fadeUp .7s cubic-bezier(.2,.8,.2,1) both}
+.lockbox input{border-radius:12px;padding:.8rem 1rem}
+.lockbox .btn{border-radius:12px}
+.msg.ok{animation:fadeUp .35s ease both}
+.msg.err{animation:fadeUp .35s ease both}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div id="lock" class="lock">
+  <div class="lockbox">
+    <div class="wm">VARÈLE</div>
+    <p>Store management</p>
+    <form id="loginform" autocomplete="on">
+      <input id="li-email" type="email" placeholder="Admin email" aria-label="Admin email" required>
+      <input id="li-pass" type="password" placeholder="Password" aria-label="Password" required>
+      <button class="btn" type="submit">Sign in</button>
+      <div class="msg err" id="loginmsg" role="status"></div>
+    </form>
+    <p style="margin-top:1rem;font-size:.85rem">Only store admins can open this page.</p>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <div class="top" id="topbar">
+    <div><span class="wm">VARÈLE</span><span class="sub">Store management</span></div>
+    <div class="acts">
+      <span class="who" id="who"></span>
+      <button id="refresh" type="button">Refresh data</button>
+      <button id="signout" type="button">Sign out</button>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" aria-selected="true" data-t="overview">Overview</button>
+    <button role="tab" aria-selected="false" data-t="insights">Insights</button>
+    <button role="tab" aria-selected="false" data-t="orders">Orders</button>
+    <button role="tab" aria-selected="false" data-t="products">Products</button>
+    <button role="tab" aria-selected="false" data-t="catalogues">Catalogues</button>
+    <button role="tab" aria-selected="false" data-t="customers">Customers</button>
+    <button role="tab" aria-selected="false" data-t="shipping">Shipping</button>
+    <button role="tab" aria-selected="false" data-t="messages">Messages</button>
+    <button role="tab" aria-selected="false" data-t="cj">CJ sync</button>
+    <button role="tab" aria-selected="false" data-t="cleanup">Clean up</button>
+    <button role="tab" aria-selected="false" data-t="nophoto">No photo <span id="npCount" class="tag"></span></button>
+  </nav>
+
+  <main>
+    <div id="status" class="empty">Loading store data…</div>
+
+    <section id="t-overview" hidden>
+      <div class="sec-h"><h2>Overview</h2><span class="muted" id="asof"></span></div>
+      <div class="grid-k" id="kpis"></div>
+      <div class="panels">
+        <div class="panel"><h3>Live status</h3><div id="livestatus"><p class="muted">Checking…</p></div></div>
+        <div class="panel"><h3>Monthly goals</h3>
+          <div class="filters" style="margin:0 0 .6rem"><input id="goalRev" type="number" min="0" placeholder="Revenue goal ($)" aria-label="Revenue goal"><input id="goalOrd" type="number" min="0" placeholder="Orders goal" aria-label="Orders goal"><button class="btn ghost sm" id="goalSave" type="button">Save goals</button></div>
+          <div id="goals"></div>
+        </div>
+      </div>
+      <div class="panels">
+        <div class="panel"><h3>Orders per day, last 30 days</h3><div id="daybars"></div><div class="chartsum" id="daysum"></div></div>
+        <div class="panel"><h3>Revenue per day, last 30 days</h3><div id="revbars"></div><div class="chartsum" id="revsum"></div></div>
+        <div class="panel"><h3>Order status</h3><div id="statusbars"></div></div>
+        <div class="panel full"><h3>Latest orders</h3><div class="wrapx"><table><thead><tr><th>Date</th><th>Order</th><th>Customer</th><th>Region</th><th>Total</th><th>Status</th></tr></thead><tbody id="latest"></tbody></table></div></div>
+      </div>
+    </section>
+
+    <section id="t-insights" hidden>
+      <div class="sec-h"><h2>Insights</h2><span class="muted">Plain-English reading of your data, updated on refresh</span></div>
+      <div id="forecast"></div>
+      <h3 style="font-size:1.3rem;margin:1.2rem 0 .6rem">Insights from your data</h3>
+      <div id="insightlist"></div>
+    </section>
+
+    <section id="t-orders" hidden>
+      <div class="sec-h"><h2>Orders</h2><span class="muted" id="ordcount"></span></div>
+      <div class="filters">
+        <input id="oq" type="search" placeholder="Search name, email or order number" aria-label="Search orders">
+        <select id="ostat" aria-label="Filter by status"><option value="">All statuses</option></select>
+      </div>
+      <div class="wrapx"><table><thead><tr><th>Date</th><th>Order</th><th>Customer</th><th>Ship to</th><th>Items</th><th>Total</th><th>Tracking</th><th>Status</th></tr></thead><tbody id="orows"></tbody></table></div>
+      <p class="msg" id="omsg" role="status"></p>
+    </section>
+
+    <section id="t-products" hidden>
+      <div class="sec-h"><h2>Products</h2><span class="muted" id="pcount"></span></div>
+      <div class="grid-k" id="pkpis"></div>
+      <div class="panels">
+        <div class="panel"><h3>Best sellers</h3><div id="best"></div></div>
+        <div class="panel"><h3>Margin check</h3><div id="margins"></div></div>
+        <div class="panel full"><h3>All products</h3>
+          <div class="filters"><input id="pq" type="search" placeholder="Search products" aria-label="Search products"><select id="pstat" aria-label="Filter"><option value="">All</option><option value="live">Live</option><option value="hidden">Hidden</option><option value="new">New</option></select></div>
+          <div class="wrapx"><table><thead><tr><th>Product</th><th>Catalogue</th><th>Cost</th><th>Price</th><th>Margin</th><th>Sold</th><th>Status</th></tr></thead><tbody id="prows"></tbody></table></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="t-catalogues" hidden>
+      <div class="sec-h"><h2>Catalogues</h2><span class="muted">Categories shown to customers on the store</span></div>
+      <div class="panel" style="margin-bottom:.8rem"><h3>Add a catalogue</h3><div class="filters" style="margin:0"><input id="cnew" type="text" maxlength="60" placeholder="e.g. Bags, Watches, Jewellery" aria-label="New catalogue name"><button class="btn" id="cadd" type="button">Add catalogue</button></div><p class="msg" id="cmsg" role="status"></p></div>
+      <div class="panel" id="picker" style="margin-bottom:.8rem" hidden></div>
+      <div class="wrapx"><table><thead><tr><th>Name</th><th>Live products</th><th>Hidden</th><th>Avg price</th><th>Avg margin</th><th>Status</th><th>Photo</th><th>Actions</th></tr></thead><tbody id="crows"></tbody></table></div>
+    </section>
+
+    <section id="t-customers" hidden>
+      <div class="sec-h"><h2>Customers</h2><span class="muted" id="custcount"></span></div>
+      <div class="kpis-inline grid-k" id="ckpis" style="margin-bottom:.8rem"></div>
+      <div class="filters"><input id="cq" type="search" placeholder="Search name or email" aria-label="Search customers"></div>
+      <div class="panel" id="custdetail" style="margin-bottom:.8rem" hidden></div>
+      <div class="wrapx"><table><thead><tr><th>Name</th><th>Email</th><th>Signed up</th><th>Last sign-in</th><th>Address region</th><th>Orders</th><th>Spent</th></tr></thead><tbody id="cust"></tbody></table></div>
+    </section>
+
+    <section id="t-shipping" hidden>
+      <div class="sec-h"><h2>Shipping</h2><span class="muted">Fees from your shipping settings</span></div>
+      <div class="panels" style="margin-top:0">
+        <div class="panel full"><h3>Rates by region</h3><div class="wrapx"><table><thead><tr><th>Region</th><th>First item</th><th>Each extra</th><th>Active</th><th>Orders</th><th>Revenue</th></tr></thead><tbody id="shiprows"></tbody></table></div></div>
+        <div class="panel"><h3>Where orders go</h3><div id="shipmap"></div></div>
+        <div class="panel"><h3>Shipping income</h3><div id="shipinc"></div></div>
+      </div>
+    </section>
+
+    <dialog id="insightDlg" style="border:0;padding:0;max-width:min(92vw,520px);width:100%;border-radius:4px;box-shadow:0 20px 50px rgba(0,0,0,.3)">
+      <div style="padding:1.2rem 1.3rem">
+        <div style="display:flex;justify-content:space-between;align-items:start;gap:1rem"><h3 id="dlgTitle" style="font-size:1.4rem"></h3><button class="btn ghost sm" id="dlgClose" type="button">Close</button></div>
+        <div id="dlgBody" style="margin-top:.8rem"></div>
+        <div id="dlgGo" style="margin-top:1rem"></div>
+      </div>
+    </dialog>
+
+    <section id="t-messages" hidden>
+      <div class="sec-h"><h2>Customer messages</h2><span class="muted" id="mcount"></span></div>
+      <div id="mnotice"></div>
+      <div class="panel" style="margin-bottom:.8rem"><h3>Send a message to a customer</h3>
+        <div class="row2" style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem">
+          <div><label class="muted" style="font-size:.8rem">To</label><select id="cTo" style="width:100%"></select></div>
+          <div><label class="muted" style="font-size:.8rem">About an order (optional)</label><select id="cOrder" style="width:100%"><option value="">None</option></select></div>
+        </div>
+        <input id="cSubj" type="text" maxlength="150" placeholder="Subject" aria-label="Subject" style="width:100%;margin-bottom:.5rem">
+        <textarea id="cBody" rows="5" maxlength="5000" placeholder="Type your message. Customers see it from Varèle." aria-label="Message" style="width:100%;padding:.6rem .7rem;border:1px solid var(--line);font:inherit"></textarea>
+        <div class="filters" style="margin:.5rem 0 0"><span class="muted" id="cCount" style="font-size:.8rem">0 / 5000</span><button class="btn" id="cSend" type="button">Send message</button></div>
+        <p class="msg" id="cMsg" role="status"></p>
+      </div>
+      <div class="filters"><select id="mstat" aria-label="Filter messages"><option value="">All</option><option value="sent">Sent</option><option value="failed">Failed</option><option value="held">Held</option><option value="pending">Waiting</option></select></div>
+      <div class="wrapx"><table><thead><tr><th>When</th><th>Message</th><th>To</th><th>Order</th><th>Status</th><th>Detail</th></tr></thead><tbody id="mrows"></tbody></table></div>
+    </section>
+
+    <section id="t-cleanup" hidden>
+      <div class="sec-h"><h2>Clean up</h2><span class="muted">Find unused items. Nothing is deleted until you tick it and confirm.</span></div>
+      <div class="notice warn"><b>Never touched:</b> live products, orders, and customer accounts. Only the items listed below can be removed.</div>
+      <div class="filters"><button class="btn" id="cuScan" type="button">Scan for unused items</button><span class="msg" id="cuMsg" role="status"></span></div>
+      <div id="cuList"></div>
+      <div id="cuActions" hidden style="margin-top:1rem;position:sticky;bottom:0;background:#fff;border:1px solid var(--line);padding:.8rem 1rem;display:flex;justify-content:space-between;align-items:center;gap:.8rem;flex-wrap:wrap">
+        <span id="cuCount" class="muted"></span>
+        <button class="btn" id="cuDelete" type="button" style="background:#a32a2a">Delete selected</button>
+      </div>
+    </section>
+
+    <section id="t-nophoto" hidden>
+      <div class="sec-h"><h2>No photo</h2><span class="muted">Products without a picture. Update their photo from CJ, or delete them here.</span></div>
+      <div class="notice warn"><b>Tip:</b> Use <b>Open CJ sync</b> to pull CJ's photo. Once a product has a photo, it leaves this list.</div>
+      <div class="filters"><button class="btn" id="npCJ" type="button">Open CJ sync</button><button class="btn" id="npAll" type="button">Select all</button><span class="msg" id="npMsg" role="status"></span></div>
+      <div id="npList"></div>
+      <div id="npActions" hidden style="margin-top:1rem;position:sticky;bottom:0;background:#fff;border:1px solid var(--line);padding:.8rem 1rem;display:flex;justify-content:space-between;align-items:center;gap:.8rem;flex-wrap:wrap">
+        <span id="npCount2" class="muted"></span>
+        <button class="btn" id="npDelete" type="button" style="background:#a32a2a">Delete selected</button>
+      </div>
+    </section>
+
+    <section id="t-cj" hidden>
+      <div class="filters"><button class="btn" id="cjCheck" type="button">Check CJ connection</button><span class="msg" id="cjmsg" role="status"></span></div>
+      <div class="panel" style="margin-bottom:.8rem">
+        <h3>Sync products with CJ</h3>
+        <p class="muted" style="margin:0 0 .7rem;font-size:.9rem">Compares each product with CJ and shows what would change. Nothing is updated until you tick the changes and confirm. Your selling prices and descriptions are never changed by this.</p>
+        <div class="filters" style="margin:0"><button class="btn" id="syncScan" type="button">Compare with CJ</button><button class="btn ghost" id="syncStop" type="button" hidden>Stop</button><span class="msg" id="syncMsg" role="status"></span></div>
+        <div style="height:6px;background:var(--soft);border-radius:999px;margin-top:.7rem;overflow:hidden"><i id="syncBar" style="display:block;height:100%;width:0;background:linear-gradient(90deg,#0ea5a4,#4338ca);transition:width .4s"></i></div>
+      </div>
+      <div id="syncList"></div>
+      <div id="syncActions" hidden style="position:sticky;bottom:0;background:#fff;border:1px solid var(--line);border-radius:14px;padding:.8rem 1rem;display:flex;justify-content:space-between;align-items:center;gap:.8rem;flex-wrap:wrap;margin-top:.8rem">
+        <span id="syncCount" class="muted"></span>
+        <button class="btn" id="syncApply" type="button">Apply selected changes</button>
+      </div>
+      <div class="sec-h"><h2>CJ sync</h2><span class="muted">Imports and product detail fetches from CJ Dropshipping</span></div>
+      <div class="grid-k" id="cjkpis"></div>
+      <div class="panels">
+        <div class="panel"><h3>Recent activity</h3><div class="wrapx"><table><thead><tr><th>When</th><th>Status</th><th>Message</th></tr></thead><tbody id="cjrows"></tbody></table></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const SUPABASE_URL = "https://hbejflabmnfvyvxltdxe.supabase.co";
+const SUPABASE_KEY = "sb_publishable_aO_8S0I1kq0IRerRNrDWoA_8gfbvbX_";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true } });
+
+const $ = id => document.getElementById(id);
+const money = n => "$" + (Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const pct = n => (Number.isFinite(n) ? Math.round(n) + "%" : "–");
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtDate = s => s ? new Date(s).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
+const fmtTime = s => s ? new Date(s).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+const short = id => "#" + String(id || "").slice(0, 8).toUpperCase();
+const ISSUE = ["pending","paid","processing","shipped","delivered","cancelled"];
+const isJunkName = n => /https?:\/\/|cjdropship|^CJ[A-Z0-9]{6,}|^[A-Z]{2}\d{6,}/i.test(n || "") || (n || "").length > 32;
+
+let D = { orders: [], items: [], products: [], catalogues: [], profiles: [], rates: [], notes: [], cj: [] };
+
+/* ---------- sign in ---------- */
+function showApp(){ $("lock").hidden = true; $("app").hidden = false; }
+function showLock(msg){ $("app").hidden = true; $("lock").hidden = false; if(msg) $("loginmsg").textContent = msg; }
+
+async function checkSession(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(!session){ showLock(""); return false; }
+  const { data: isAdmin, error } = await sb.rpc("is_admin");
+  if(error || isAdmin !== true){
+    await sb.auth.signOut();
+    showLock("This account is not an admin. Sign in with your admin account.");
+    return false;
+  }
+  $("who").textContent = session.user.email;
+  showApp(); return true;
+}
+
+$("loginform").onsubmit = async e => {
+  e.preventDefault(); $("loginmsg").textContent = "Signing in…";
+  const { error } = await sb.auth.signInWithPassword({ email: $("li-email").value.trim(), password: $("li-pass").value });
+  if(error){ $("loginmsg").textContent = "Those details didn't work. Check your email and password."; return; }
+  $("li-pass").value = "";
+  if(await checkSession()) load();
+};
+$("signout").onclick = async () => { await sb.auth.signOut(); location.reload(); };
+$("refresh").onclick = () => load();
+
+/* ---------- tabs ---------- */
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#tabs button").forEach(x => x.setAttribute("aria-selected", String(x === b)));
+  for(const t of ["overview","insights","orders","products","catalogues","customers","shipping","messages","cj","cleanup","nophoto"]) $("t-" + t).hidden = (t !== b.dataset.t);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+/* ---------- data ---------- */
+let loading = false;
+async function load(){
+  if(loading) return; loading = true;
+  try { await loadInner(); } catch(e){ $("status").hidden = false; $("status").textContent = "Couldn't load the data: " + (e && e.message ? e.message : e); } finally { loading = false; }
+}
+async function loadInner(){
+  $("status").hidden = false; $("status").textContent = "Loading store data…";
+  const [o, oi, p, c, pr, sr, n, cj] = await Promise.all([
+    sb.from("orders").select("id,created_at,customer_name,customer_email,shipping_address,shipping_fee,status,total,user_id,tracking_number").order("created_at",{ascending:false}).limit(5000),
+    sb.from("order_items").select("order_id,product_id,quantity,unit_price,label,product_name").limit(20000),
+    sb.from("products").select("id,name,image_url,sell_price,cost_price,active,catalogue_id,listed_at,created_at").limit(5000),
+    sb.from("catalogues").select("id,name,image_url").order("name"),
+    sb.from("profiles").select("id,email,full_name,provider,created_at,last_sign_in_at,delivery_address").order("created_at",{ascending:false}).limit(5000),
+    sb.from("shipping_rates").select("id,name,fee,extra_fee,active,sort").order("sort"),
+    sb.from("notifications").select("id,order_id,kind,to_email,subject,status,error,created_at,sent_at").order("created_at",{ascending:false}).limit(500),
+    sb.from("cj_sync_log").select("id,status,message,created_at").order("created_at",{ascending:false}).limit(300)
+  ]);
+  const err = [o,oi,p,c,pr,sr,n,cj].find(x => x.error);
+  if(err){ $("status").textContent = "Couldn't load data: " + err.error.message; return; }
+  D = { orders: o.data||[], items: oi.data||[], products: p.data||[], catalogues: c.data||[], profiles: pr.data||[], rates: sr.data||[], notes: n.data||[], cj: cj.data||[] };
+  $("status").hidden = true;
+  $("asof").textContent = "Updated " + fmtTime(new Date());
+  renderAll();
+}
+
+/* ---------- helpers ---------- */
+const live = () => D.orders.filter(o => o.status !== "cancelled");
+const itemsOf = id => D.items.filter(i => i.order_id === id);
+const soldBy = () => { const m = {}; for(const i of D.items){ const o = D.orders.find(x => x.id === i.order_id); if(!o || o.status === "cancelled") continue; m[i.product_id] = (m[i.product_id]||0) + (i.quantity||1); } return m; };
+const margin = p => (p.sell_price && p.cost_price) ? (1 - Number(p.cost_price)/Number(p.sell_price)) * 100 : null;
+const catName = id => (D.catalogues.find(c => c.id === id) || {}).name || "No catalogue";
+
+function renderAll(){ renderOverview(); renderInsights(); renderOrders(); renderProducts(); renderCatalogues(); renderCustomers(); renderShipping(); renderMessages(); renderCJ(); animateView(document.getElementById("main-stats") || document.querySelector("main")); }
+
+/* ---------- overview ---------- */
+function renderLive(){
+  const last = (arr, f) => arr.length ? arr.reduce((a,b) => (f(a) > f(b) ? a : b)) : null;
+  const lastOrder = last(D.orders, o => new Date(o.created_at).getTime());
+  const sent = D.notes.filter(n => n.status === "sent" && n.sent_at);
+  const lastSent = last(sent, n => new Date(n.sent_at).getTime());
+  const failed = D.notes.filter(n => n.status === "failed").length;
+  const lastCj = D.cj[0];
+  const row = (label, ok, text) => `<div class="hbar" style="grid-template-columns:auto 1fr auto"><span class="dot" style="width:10px;height:10px;border-radius:50%;background:${ok?"var(--ok)":"#c98a10"};display:inline-block"></span><span class="l">${esc(label)}</span><span class="r">${esc(text)}</span></div>`;
+  $("livestatus").innerHTML = [
+    row("Database", true, "connected"),
+    row("Last order", !!lastOrder, lastOrder ? fmtTime(lastOrder.created_at) : "none yet"),
+    row("Last email sent", !!lastSent, lastSent ? fmtTime(lastSent.sent_at) : "none yet"),
+    row("Failed emails", failed === 0, failed ? failed + " to fix" : "none"),
+    row("Last CJ activity", !!lastCj && lastCj.status === "ok", lastCj ? fmtTime(lastCj.created_at) : "none yet")
+  ].join("");
+}
+function renderGoals(){
+  let g = {}; try { g = JSON.parse(localStorage.getItem("varele-goals") || "{}"); } catch(e){}
+  if(g.rev != null && !$("goalRev").value) $("goalRev").value = g.rev;
+  if(g.ord != null && !$("goalOrd").value) $("goalOrd").value = g.ord;
+  const now = new Date(), start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const month = live().filter(o => new Date(o.created_at) >= start);
+  const rev = month.reduce((s,o) => s + Number(o.total||0), 0), ords = month.length;
+  const bar = (label, val, goal, fmt) => {
+    const pct = goal > 0 ? Math.min(100, Math.round(val / goal * 100)) : 0;
+    return `<div style="margin:.5rem 0"><div style="display:flex;justify-content:space-between;font-size:.86rem"><span>${esc(label)}</span><span class="muted">${fmt(val)}${goal ? " of " + fmt(goal) : ""}</span></div><div class="t" style="height:12px;background:var(--soft);position:relative"><i style="position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#0ea5a4,#4338ca);width:${pct}%;transition:width .9s"></i></div><div class="muted" style="font-size:.76rem;text-align:right">${goal ? pct + "% of goal" : "set a goal above"}</div></div>`;
+  };
+  $("goals").innerHTML = bar("Revenue this month", rev, Number(g.rev)||0, n => money(n)) + bar("Orders this month", ords, Number(g.ord)||0, n => String(n));
+}
+$("goalSave").onclick = () => {
+  const rev = Number($("goalRev").value) || 0, ord = Number($("goalOrd").value) || 0;
+  try { localStorage.setItem("varele-goals", JSON.stringify({ rev, ord })); } catch(e){}
+  renderGoals();
+};
+function renderOverview(){
+  const L = live(), now = new Date();
+  const total = L.reduce((s,o) => s + Number(o.total||0), 0);
+  const ship = L.reduce((s,o) => s + Number(o.shipping_fee||0), 0);
+  const paid = D.orders.filter(o => ["paid","processing","shipped","delivered"].includes(o.status));
+  const pending = D.orders.filter(o => o.status === "pending");
+  const kp = [
+    ["Revenue", money(total), L.length + " orders"],
+    ["Average order", L.length ? money(total / L.length) : "–", "excluding cancelled"],
+    ["Waiting for payment", String(pending.length), pending.length ? money(pending.reduce((s,o)=>s+Number(o.total||0),0)) + " open" : "none open"],
+    ["Paid or later", String(paid.length), paid.length ? money(paid.reduce((s,o)=>s+Number(o.total||0),0)) : ""],
+    ["Shipping collected", money(ship), "on live orders"],
+    ["Customers", String(D.profiles.length), D.profiles.filter(p => p.delivery_address).length + " with address"],
+    ["Live products", String(D.products.filter(p => p.active).length), D.products.filter(p => !p.active && p.listed_at).length + " hidden"],
+    ["Cancelled", String(D.orders.filter(o => o.status === "cancelled").length), "orders"]
+  ];
+  renderLive(); renderGoals();
+  $("kpis").innerHTML = kp.map(([l,v,n]) => `<div class="kpi"><div class="l">${esc(l)}</div><div class="v">${esc(v)}</div><div class="n">${esc(n)}</div></div>`).join("");
+
+  const days = []; for(let i = 29; i >= 0; i--){ const d = new Date(now); d.setHours(0,0,0,0); d.setDate(d.getDate()-i); days.push(d); }
+  const dayOf = d => L.filter(o => new Date(o.created_at).toDateString() === d.toDateString());
+  const ordersPerDay = days.map(d => dayOf(d).length);
+  const revPerDay = days.map(d => dayOf(d).reduce((s,o)=>s+Number(o.total||0),0));
+  const labelFor = (d) => d.toLocaleDateString("en-GB",{ day:"numeric", month:"short" });
+  $("daybars").innerHTML = columnChart(days.map((d,i)=>({ value: ordersPerDay[i], label: labelFor(d), tip: `${fmtDate(d)}: ${ordersPerDay[i]} order${ordersPerDay[i]===1?"":"s"}` })), { fmt: n => String(Math.round(n)), unit: "orders" });
+  const peakI = ordersPerDay.indexOf(Math.max(...ordersPerDay)), activeDays = ordersPerDay.filter(x=>x>0).length;
+  $("daysum").innerHTML = `<div>Total in 30 days<b>${ordersPerDay.reduce((a,b)=>a+b,0)}</b></div><div>Busiest day<b>${ordersPerDay[peakI] ? labelFor(days[peakI]) + " (" + ordersPerDay[peakI] + ")" : "–"}</b></div><div>Average per day<b>${(ordersPerDay.reduce((a,b)=>a+b,0)/30).toFixed(1)}</b></div><div>Days with orders<b>${activeDays} of 30</b></div>`;
+  $("revbars").innerHTML = columnChart(days.map((d,i)=>({ value: revPerDay[i], label: labelFor(d), tip: `${fmtDate(d)}: ${money(revPerDay[i])}` })), { fmt: n => n >= 1000 ? "$" + (n/1000).toFixed(1) + "k" : "$" + Math.round(n), unit: "revenue" });
+  const totRev = revPerDay.reduce((a,b)=>a+b,0);
+  $("revsum").innerHTML = `<div>Revenue in 30 days<b>${money(totRev)}</b></div><div>Best day<b>${revPerDay[peakRev(revPerDay)] ? money(revPerDay[peakRev(revPerDay)]) : "–"}</b></div><div>Average per day<b>${money(totRev/30)}</b></div><div>Shipping included<b>${money(L.filter(o=>o.created_at && new Date(o.created_at) >= days[0]).reduce((s,o)=>s+Number(o.shipping_fee||0),0))}</b></div>`;
+
+  const sc = {}; for(const s of ISSUE) sc[s] = D.orders.filter(o => o.status === s).length;
+  sc.cancelled = D.orders.filter(o => o.status === "cancelled").length;
+  const smax = Math.max(1, ...Object.values(sc));
+  $("statusbars").innerHTML = Object.entries(sc).map(([k,v]) => `<div class="hbar"><span class="l">${esc(k)}</span><div class="t"><i style="width:${Math.round(v/smax*100)}%"></i></div><span class="r">${v}</span></div>`).join("");
+
+  $("latest").innerHTML = D.orders.slice(0,10).map(o => `<tr><td>${esc(fmtDate(o.created_at))}</td><td>${short(o.id)}</td><td>${esc(o.customer_name||"")}</td><td>${esc((o.shipping_address||{}).region||"")}</td><td>${money(o.total)}</td><td><span class="tag ${esc(o.status)}">${esc(o.status)}</span></td></tr>`).join("") || '<tr><td colspan="6" class="muted">No orders yet.</td></tr>';
+}
+
+/* ---------- insights (plain English from the data) ---------- */
+function niceMax(v){
+  if(v <= 0) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(v))), f = v / p;
+  const nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
+  return nf * p;
+}
+function peakRev(arr){ let bi = 0; arr.forEach((x,i)=>{ if(x > arr[bi]) bi = i; }); return bi; }
+function columnChart(items, opts = {}){
+  const max = niceMax(Math.max(0, ...items.map(i => i.value)));
+  const fmt = opts.fmt || (n => String(Math.round(n)));
+  const n = items.length, step = Math.max(1, Math.ceil(n / 10));
+  const showVal = n <= 14;
+  const ticks = [max, max*0.75, max*0.5, max*0.25, 0];
+  const yaxis = ticks.map(t => `<span style="bottom:${(t/max)*100}%">${esc(fmt(t))}</span>`).join("");
+  const cols = items.map(it => {
+    const pct = max ? (it.value / max) * 100 : 0;
+    return `<div class="col" title="${esc(it.tip || it.label)}"><span class="v ${showVal && it.value > 0 ? "" : "hide"}">${it.value > 0 ? esc(fmt(it.value)) : ""}</span><div class="bar" style="height:${pct.toFixed(2)}%"></div></div>`;
+  }).join("");
+  const xl = items.map((it,i) => `<span>${i % step === 0 ? esc(it.label) : ""}</span>`).join("");
+  const unitTxt = opts.unit ? `<div class="chartlegend" style="margin:0 0 .5rem"><span><i></i>${esc(opts.unit)} per day · tallest bar ${esc(fmt(max))}</span></div>` : "";
+  return `${unitTxt}<div class="chart" style="--h:220px"><div class="yax">${yaxis}</div><div class="plotwrap"><div class="plot"><div class="cols">${cols}</div></div><div class="xl">${xl}</div></div></div>`;
+}
+
+function buildForecast(){
+  const F = [], now = Date.now(), day = 864e5, L = live();
+  const sumBetween = (a, b) => L.filter(o => { const t = now - new Date(o.created_at); return t >= a*day && t < b*day; }).reduce((s,o) => s + Number(o.total||0), 0);
+  const thisWk = sumBetween(0,7), lastWk = sumBetween(7,14);
+  const failed = D.notes.filter(n => n.status === "failed");
+  const waiting = D.orders.filter(o => o.status === "pending");
+  const stale = waiting.filter(o => now - new Date(o.created_at) > 2*day);
+  const oldest = stale.length ? Math.floor((now - Math.min(...stale.map(o => new Date(o.created_at).getTime()))) / day) : 0;
+  const n = D.orders.length, confidence = n >= 20 ? "High" : n >= 5 ? "Medium" : "Low (few orders so far)";
+
+  if(failed.length) F.push({ level: "bad", title: "Customers may not get their emails", why: failed.length + " email" + (failed.length>1?"s":"") + " failed. The last reason was: " + (failed[0].error||"unknown").slice(0,120) + ".", outcome: "Customers won't get confirmations or shipping updates, which leads to support messages and possible cancellations.", steps: "Open the Messages tab and read the error. Fix the cause (sender address or email provider). Place one test order to check that emails arrive.", tab: "messages", confidence: "High" });
+  if(stale.length) F.push({ level: "warn", title: "Waiting orders may be lost", why: stale.length + " order" + (stale.length>1?"s have":" has") + " been waiting more than 2 days. The oldest is " + oldest + " day" + (oldest!==1?"s":"") + " old.", outcome: "Customers who still want the item may cancel, or pay elsewhere. Some may ask where their order is.", steps: "Confirm each waiting order by email. Mark it paid once Paystack or your invoice confirms payment. Cancel orders unpaid after 7 days, and tell the customer.", tab: "orders", confidence });
+  if(lastWk > 0 && thisWk < lastWk * 0.7) F.push({ level: "warn", title: "Sales are slowing down", why: "Last 7 days: " + money(thisWk) + ". The 7 days before: " + money(lastWk) + " (down " + Math.round((1 - thisWk/lastWk)*100) + "%).", outcome: "If this continues, the month may finish below your goal.", steps: "Share a product link on social media. Check that the best sellers still have photos and prices. Look at the Products tab for items that stopped selling.", tab: "products", confidence });
+  else if(lastWk > 0 && thisWk > lastWk * 1.3) F.push({ level: "good", title: "Sales are picking up", why: "Last 7 days: " + money(thisWk) + ", up from " + money(lastWk) + ".", outcome: "Good momentum. Stock and shipping capacity may need checking if it keeps rising.", steps: "Check the best sellers are in stock. Keep your share posts going. Review shipping times for busy days.", tab: "products", confidence });
+
+  const g = (() => { try { return JSON.parse(localStorage.getItem("varele-goals") || "{}"); } catch(e){ return {}; } })();
+  const start = new Date(new Date().getFullYear(), new Date().getMonth(), 1), daysIn = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate();
+  const elapsed = Math.max(1, new Date().getDate());
+  const monthRev = L.filter(o => new Date(o.created_at) >= start).reduce((s,o) => s + Number(o.total||0), 0);
+  const projected = monthRev / elapsed * daysIn;
+  if(Number(g.rev) > 0){
+    if(projected < Number(g.rev)) F.push({ level: "warn", title: "Likely to miss this month's revenue goal", why: "You've made " + money(monthRev) + " in " + elapsed + " day" + (elapsed>1?"s":"") + ". At this pace the month finishes near " + money(projected) + " against a goal of " + money(g.rev) + ".", outcome: "The goal won't be reached unless sales pick up in the last part of the month.", steps: "Work out the gap, which is " + money(Number(g.rev) - projected) + ". Promote your best sellers, or add a limited offer. Track the Overview goal bar weekly.", tab: "overview", confidence });
+    else F.push({ level: "good", title: "On track for this month's revenue goal", why: "Projected finish near " + money(projected) + " against a goal of " + money(g.rev) + ".", outcome: "You're on course, provided sales keep their current pace.", steps: "Keep the current promotions running. Check the goal again next week.", tab: "overview", confidence });
+  }
+
+  const lowM = D.products.filter(p => p.active && p.sell_price && p.cost_price && (1 - p.cost_price/p.sell_price) * 100 < 30);
+  if(lowM.length) F.push({ level: "warn", title: "Thin profit on some products", why: lowM.length + " live product" + (lowM.length>1?"s":"") + " have a margin under 30%.", outcome: "If CJ raises its costs, these products could sell at a loss. Payment fees also come out of the margin.", steps: "Open the Products tab and sort by margin. Raise the price on the lowest, or hide products you can't price well.", tab: "products", confidence });
+
+  if(D.cj.some(r => r.status === "error" && now - new Date(r.created_at) < day)) F.push({ level: "warn", title: "Product details may be out of date", why: "CJ logged an error in the last 24 hours.", outcome: "Product photos, descriptions or prices may not match CJ until the next successful sync.", steps: "Press Check CJ connection on the CJ sync tab. If it's connected, the error was probably temporary. If not, check your CJ key in Supabase secrets.", tab: "cj", confidence: "Medium" });
+
+  if(n === 0 && D.products.some(p => p.active)) F.push({ level: "warn", title: "No sales yet", why: "You have " + D.products.filter(p => p.active).length + " live products but no orders.", outcome: "Without traffic, the store won't grow. Early buyers also tell you what to fix.", steps: "Share the store link with 10 people you know. Ask for feedback on prices and photos. Check the Messages tab for any emails that failed.", tab: "overview", confidence: "Medium" });
+
+  const emptyCats = D.catalogues.filter(c => !/https?:\/\/|cjdropship/i.test(c.name) && !D.products.some(p => p.catalogue_id === c.id && p.active));
+  if(emptyCats.length) F.push({ level: "", title: "Empty categories may confuse shoppers", why: emptyCats.length + " categor" + (emptyCats.length>1?"ies have":"y has") + " no live products: " + emptyCats.map(c => c.name).slice(0,3).join(", ") + ".", outcome: "Shoppers who expect those categories may leave. Empty categories don't show on the store, so the impact is small.", steps: "Add products to these categories, or delete them on the Catalogues tab.", tab: "catalogues", confidence: "High" });
+
+  if(n >= 3 && new Set(D.orders.map(o => o.user_id).filter(Boolean)).size === 0) F.push({ level: "", title: "Few repeat buyers", why: "Your " + n + " orders all came from guest checkouts, with no accounts linked.", outcome: "Customers who don't create accounts are harder to bring back.", steps: "Mention the account benefit at checkout. Email customers after delivery with a thank-you and a link to the store.", tab: "customers", confidence });
+
+  return F;
+}
+function renderForecast(){
+  const F = buildForecast();
+  $("forecast").innerHTML = `<div class="sec-h" style="margin:0 0 .6rem"><h3 style="font-size:1.3rem">Forecast</h3><span class="muted" style="font-size:.85rem">Based on your current data. Estimates, not guarantees.</span></div>` +
+    (F.length ? F.map((x, i) => `<button class="insight ${x.level}" data-fc="${i}" type="button" style="width:100%;text-align:left;cursor:pointer;font:inherit"><span class="dot"></span><div><h4>${esc(x.title)}</h4><p>${esc(x.why)}</p><p class="act"><b>Likely outcome:</b> ${esc(x.outcome)}</p><p class="muted" style="font-size:.78rem;margin:.4rem 0 0">Confidence: ${esc(x.confidence)} · Tap for steps</p></div></button>`).join("") : '<div class="empty">No risks or changes are predicted from your current data.</div>');
+  window.FC = F;
+}
+$("forecast").onclick = e => {
+  const b = e.target.closest("[data-fc]"); if(!b) return;
+  const x = window.FC[Number(b.dataset.fc)]; if(!x) return;
+  renderDetail({ level: x.level, text: x.why + " Likely outcome: " + x.outcome, act: x.steps, tab: x.tab, title: x.title });
+  $("insightDlg").showModal();
+};
+
+let INSIGHTS = [];
+const TAB_FOR = [[/message|email|brevo/i,"messages"],[/pending|waiting|order/i,"orders"],[/margin|product|sold|sellers/i,"products"],[/catalogue/i,"catalogues"],[/customer|account/i,"customers"],[/cj|sync/i,"cj"],[/shipping|region/i,"shipping"]];
+function tabFor(t){ const f = TAB_FOR.find(([re]) => re.test(t)); return f ? f[1] : null; }
+function openTab(name){ const b = document.querySelector('#tabs button[data-t="' + name + '"]'); if(b) b.click(); }
+$("insightlist").onclick = e => {
+  const b = e.target.closest("[data-ins]"); if(!b) return;
+  const i = INSIGHTS[Number(b.dataset.ins)]; if(!i) return;
+  renderDetail(i);
+  $("insightDlg").showModal();
+};
+$("dlgClose").onclick = () => $("insightDlg").close();
+const LEVEL_WORD = { bad: "Urgent", warn: "Needs attention", good: "Good news", "": "For information" };
+const REASONS = { messages: "Email settings, a wrong or unverified sender address, or an email provider rejecting a message.", orders: "Orders waiting for you to confirm or mark paid, or customers who haven't finished paying.", products: "Prices, costs or product choices that don't match what customers buy.", catalogues: "Categories that were created by the CJ import or left empty.", customers: "Few customers have signed up, or they haven't saved their details.", cj: "The connection to CJ, or a product fetch that didn't finish.", shipping: "Shipping fees that don't match what CJ charges, or regions with no rate." };
+function renderDetail(i){
+  const steps = (i.act || "").split(/(?<=\.)\s+/).filter(Boolean);
+  const good = i.level === "good" ? "This is working in your favour. Keep doing what caused it." : i.level === "bad" ? "If this isn't fixed, customers can be affected straight away, and orders can be lost or delayed." : i.level === "warn" ? "Left alone, this usually grows into a bigger problem, such as lost sales or more support messages." : "No risk right now. It's useful to know.";
+  const reason = REASONS[i.tab] || "Something in your store's data changed. Use the steps below to check.";
+  $("dlgTitle").textContent = i.title;
+  $("dlgBody").innerHTML = `
+    <p class="dlg-tag ${esc(i.level||"info")}">${esc(LEVEL_WORD[i.level||""])}</p>
+    <h4 class="dlg-h">What this means</h4><p>${esc(i.text)}</p>
+    <h4 class="dlg-h">Good or harmful?</h4><p>${esc(good)}</p>
+    <h4 class="dlg-h">Possible reason</h4><p>${esc(reason)}</p>
+    <h4 class="dlg-h">What to do, step by step</h4>
+    <ol class="dlg-steps">${steps.length ? steps.map(x => `<li>${esc(x)}</li>`).join("") : "<li>No action needed. Check again after your next refresh.</li>"}</ol>
+    ${i.tab ? `<p class="muted" style="font-size:.85rem;margin:.6rem 0 0">Tip: the ${esc(i.tab)} tab has the detail you need for these steps.</p>` : ""}`;
+  $("dlgGo").innerHTML = i.tab ? `<button class="btn" type="button" id="dlgOpen">Open the ${esc(i.tab)} tab</button>` : "";
+  if(i.tab) $("dlgOpen").onclick = () => { $("insightDlg").close(); openTab(i.tab); };
+}
+function renderInsights(){
+  renderForecast();
+  const out = [];
+  const add = (level, title, text, act) => out.push({ level, title, text, act, tab: tabFor(title + " " + text) });
+  const L = live(), pending = D.orders.filter(o => o.status === "pending");
+  const failed = D.notes.filter(n => n.status === "failed"), held = D.notes.filter(n => n.status === "held"), sent = D.notes.filter(n => n.status === "sent");
+
+  // Messages
+  if(failed.length){
+    const err = failed[0].error || "";
+    const why = /Brevo key/i.test(err) ? "The Brevo API key is not saved in Supabase Vault, so no customer emails can go out." : "Brevo rejected the messages: " + err;
+    add("bad", `${failed.length} customer message${failed.length>1?"s":""} failed to send`, why, /Brevo key/i.test(err) ? "Add the Brevo API key to Supabase Vault as brevo_api_key, then place a test order to check the messages arrive." : "Check the error on the Messages tab.");
+  } else if(sent.length) add("good", "Customer messages are going out", `${sent.length} messages sent with no failures.`);
+  if(held.length) add("warn", `${held.length} message${held.length>1?"s":""} held for review`, "A supplier reference was found in a message, so it was not sent to the customer.", "Open the Messages tab and review the text, then reply to the customer yourself if needed.");
+
+  // Pending orders
+  if(pending.length){
+    const oldest = pending.reduce((a,b) => new Date(a.created_at) < new Date(b.created_at) ? a : b);
+    const days = Math.floor((Date.now() - new Date(oldest.created_at)) / 864e5);
+    add(days > 2 ? "bad" : "warn", `${pending.length} order${pending.length>1?"s are":" is"} waiting for payment`, `Worth ${money(pending.reduce((s,o)=>s+Number(o.total||0),0))}. The oldest was placed ${days === 0 ? "today" : days + " day" + (days>1?"s":"") + " ago"}.`, "Confirm each order by email and send the invoice. Orders are not paid until you mark them paid in the orders list.");
+  } else if(D.orders.length) add("good", "No orders waiting", "Every order has moved past payment.");
+
+  // Test orders
+  const testLike = D.orders.filter(o => /^ores/i.test(o.customer_name||"") || /ores7/i.test(o.customer_email||""));
+  if(testLike.length) add("warn", `${testLike.length} of your ${D.orders.length} orders look like test orders`, "They use your own name or email, so they inflate revenue and statistics.", "If they were tests, cancel them in the Orders tab so they don't count as sales.");
+
+  // Revenue and basket
+  if(L.length){
+    const aov = L.reduce((s,o)=>s+Number(o.total||0),0) / L.length;
+    const shipShare = L.reduce((s,o)=>s+Number(o.shipping_fee||0),0) / Math.max(1, L.reduce((s,o)=>s+Number(o.total||0),0)) * 100;
+    add("", `Average order is ${money(aov)}`, `Shipping makes up about ${pct(shipShare)} of what customers pay on average.`, shipShare > 25 ? "Shipping is a large share of the total. Consider a minimum order for free or cheaper shipping, or check your regional fees." : "");
+  }
+
+  // Regions
+  const regionCount = {}; for(const o of L){ const r = (o.shipping_address||{}).region || "Unknown"; regionCount[r] = (regionCount[r]||0)+1; }
+  const topR = Object.entries(regionCount).sort((a,b)=>b[1]-a[1])[0];
+  if(topR) add("", `Most orders ship to ${topR[0]}`, `${topR[1]} of ${L.length} live orders.`, "");
+  const noOrderRegions = D.rates.filter(r => r.active && !regionCount[r.name]).map(r => r.name);
+  if(D.orders.length && noOrderRegions.length) add("", "Regions with no orders yet", noOrderRegions.join(", ") + ". Traffic may not reach them yet.", "Share your store on social media or in shipping-specific messages to reach them.");
+
+  // Products
+  const live1 = D.products.filter(p => p.active);
+  const sold = soldBy(), sellers = Object.entries(sold).sort((a,b)=>b[1]-a[1]);
+  if(!D.orders.length) add("", `${live1.length} products are live`, "No sales yet. Customers will see these once they browse the store.", "Share the store link with friends and family to get the first orders in.");
+  else if(sellers.length){ const p = D.products.find(x => x.id === sellers[0][0]); add("good", `Best seller: ${p ? p.name : "a product"}`, `${sellers[0][1]} sold.`, "Consider adding similar products to this catalogue."); }
+  const unsold = live1.filter(p => !sold[p.id]);
+  if(D.orders.length && unsold.length > live1.length/2 && live1.length > 4) add("warn", `Most live products haven't sold`, `${unsold.length} of ${live1.length} live products have no orders yet.`, "Look at product photos and prices, and hide the ones that don't sell after a few weeks.");
+
+  // Margins
+  const lowM = live1.filter(p => margin(p) !== null && margin(p) < 30);
+  if(lowM.length) add("warn", `${lowM.length} live product${lowM.length>1?"s have":" has"} under 30% margin`, "Low margin leaves little room for payment fees and shipping surprises.", "Raise the price on these in the Products tab.");
+  const avgM = live1.filter(p => margin(p) !== null).reduce((s,p)=>s+margin(p),0) / Math.max(1, live1.filter(p => margin(p) !== null).length);
+  if(live1.length) add(avgM >= 40 ? "good" : "", `Average margin is ${pct(avgM)}`, avgM >= 40 ? "That's in your 40% target range." : "Below your 40% target on average.", avgM >= 40 ? "" : "Use the price formula to raise prices where the cost leaves room.");
+
+  // Catalogues
+  const junk = D.catalogues.filter(c => isJunkName(c.name));
+  if(junk.length) add("warn", `${junk.length} catalogue${junk.length>1?"s look":" looks"} wrong`, "Some catalogues were created from product titles or CJ codes: " + junk.slice(0,3).map(c => `"${c.name.slice(0,30)}…"`).join(", ") + ".", "Delete these from Supabase, or rename them and move their products into a proper catalogue.");
+  const empty = D.catalogues.filter(c => !isJunkName(c.name) && !D.products.some(p => p.catalogue_id === c.id && p.active));
+  if(empty.length) add("", `${empty.length} empty catalogue${empty.length>1?"s":""}`, empty.map(c => c.name).join(", ") + " have no live products, so customers won't see them.", "Add products or delete the catalogue if you won't use it.");
+
+  // Customers
+  const withOrders = new Set(D.orders.map(o => o.user_id).filter(Boolean));
+  const noAddr = D.profiles.filter(p => !p.delivery_address).length;
+  if(D.profiles.length) add(noAddr ? "warn" : "good", `${D.profiles.length} customer account${D.profiles.length>1?"s":""}`, `${D.profiles.length - noAddr} have saved a delivery address. Accounts with an address get their region set automatically at checkout.`, noAddr ? "Encourage customers to add their address in their account." : "");
+  const repeat = [...withOrders].length;
+  if(D.orders.length && D.profiles.length) add("", `${repeat} account${repeat===1?"":"s"} placed orders`, "Repeat customers are the cheapest sales to win. Track them in the Customers tab.", "");
+
+  // CJ
+  const cjErr = D.cj.filter(r => r.status === "error").length;
+  const lastCj = D.cj[0];
+  if(cjErr) add("warn", `${cjErr} CJ sync error${cjErr>1?"s":""} in the log`, "Errors can happen when CJ rate-limits requests or a product fetch fails. Most are harmless and retry on the next sync.", "Check the CJ sync tab for the messages.");
+  if(lastCj) add("", "Last CJ sync", `${fmtTime(lastCj.created_at)}: ${lastCj.message || lastCj.status}`, "");
+
+  INSIGHTS = out;
+  $("insightlist").innerHTML = out.length ? out.map((i, n) => `<button class="insight ${i.level}" data-ins="${n}" type="button" style="width:100%;text-align:left;cursor:pointer;font:inherit"><span class="dot"></span><div><h4>${esc(i.title)}</h4><p>${esc(i.text)}</p>${i.act ? `<p class="act"><b>Next:</b> ${esc(i.act)}</p>` : ""}<p class="muted" style="font-size:.78rem;margin:.4rem 0 0">Tap for details</p></div></button>`).join("") : '<div class="empty">Nothing to flag right now.</div>';
+}
+
+/* ---------- orders ---------- */
+function renderOrders(){
+  const st = $("ostat");
+  if(!st.dataset.built){ st.dataset.built = "1"; for(const s of ISSUE) st.append(new Option(s[0].toUpperCase()+s.slice(1), s)); st.append(new Option("Cancelled","cancelled")); }
+  const q = $("oq").value.trim().toLowerCase(), f = st.value;
+  const list = D.orders.filter(o => (!f || o.status === f) && (!q || [o.customer_name,o.customer_email,o.id].some(x => String(x||"").toLowerCase().includes(q))));
+  $("ordcount").textContent = list.length + " of " + D.orders.length;
+  $("orows").innerHTML = list.length ? list.map(o => {
+    const its = itemsOf(o.id), n = its.reduce((s,i)=>s+(i.quantity||1),0);
+    const a = o.shipping_address || {}, addr = [a.city, a.country || a.region].filter(Boolean).join(", ");
+    return `<tr><td>${esc(fmtDate(o.created_at))}</td><td>${short(o.id)}</td><td>${esc(o.customer_name||"")}<div class="muted" style="font-size:.78rem">${esc(o.customer_email||"")}</div></td><td class="addr">${esc(addr)}</td><td>${n}</td><td>${money(o.total)}<div class="muted" style="font-size:.76rem">incl. ${money(o.shipping_fee)} shipping</div></td><td>${esc(o.tracking_number||"–")}</td><td><select data-id="${esc(o.id)}" aria-label="Status">${[...ISSUE,"cancelled"].map(s => `<option ${s===o.status?"selected":""} value="${s}">${s}</option>`).join("")}</select>${o.status!=="cancelled"&&o.status!=="delivered"?` <button class="btn ghost sm" data-cancel="${esc(o.id)}" type="button">Cancel</button>`:""}</td></tr>`;
+  }).join("") : '<tr><td colspan="8" class="muted">No orders match.</td></tr>';
+}
+$("oq").oninput = renderOrders; $("ostat").onchange = renderOrders;
+async function applyStatus(sel, fromDetail){
+  const id = sel.dataset.id, status = sel.value;
+  const payload = { status };
+  if(status === "shipped"){
+    const cur = (D.orders.find(x => x.id === id) || {}).tracking_number || "";
+    const t = window.prompt("Tracking number for this order (leave empty if none yet):", cur);
+    if(t !== null && t.trim() !== "") payload.tracking_number = t.trim();
+  }
+  if(status === "cancelled" && !window.confirm("Cancel this order? The customer will be emailed a cancellation notice.")){ sel.value = (D.orders.find(x => x.id === id) || {}).status; return; }
+  const { error } = await sb.from("orders").update(payload).eq("id", id);
+  const m = fromDetail ? $("detailmsg") : $("omsg");
+  if(error){ m.className = "msg err"; m.textContent = "Couldn't save: " + error.message; return; }
+  m.className = "msg ok"; m.textContent = "Saved. The customer receives a matching email automatically.";
+  await load();
+  if(fromDetail && currentCustomer) openCustomer(currentCustomer);
+}
+$("orows").onchange = e => { const sel = e.target.closest("select[data-id]"); if(sel) applyStatus(sel, false); };
+$("orows").onclick = e => { const btn = e.target.closest("button[data-cancel]"); if(btn){ const sel = document.querySelector('select[data-id="'+btn.dataset.cancel+'"]'); if(sel){ sel.value = "cancelled"; applyStatus(sel, false); } } };
+
+/* ---------- products ---------- */
+function renderProducts(){
+  const sold = soldBy();
+  const act = D.products.filter(p => p.active), hid = D.products.filter(p => !p.active && p.listed_at), neu = D.products.filter(p => !p.listed_at);
+  const avgM = act.filter(p => margin(p) !== null);
+  $("pcount").textContent = D.products.length + " products";
+  $("pkpis").innerHTML = [["Live", act.length], ["Hidden", hid.length], ["Not yet added", neu.length], ["Items sold", Object.values(sold).reduce((a,b)=>a+b,0)], ["Avg margin", pct(avgM.reduce((s,p)=>s+margin(p),0)/Math.max(1,avgM.length))]]
+    .map(([l,v]) => `<div class="kpi"><div class="l">${esc(l)}</div><div class="v">${esc(v)}</div></div>`).join("");
+
+  const ranked = D.products.filter(p => sold[p.id]).sort((a,b)=>sold[b.id]-sold[a.id]).slice(0,8);
+  $("best").innerHTML = ranked.length ? ranked.map(p => `<div class="hbar"><span class="l">${esc(p.name)}</span><div class="t"><i style="width:${Math.round(sold[p.id]/sold[ranked[0].id]*100)}%"></i></div><span class="r">${sold[p.id]} sold</span></div>`).join("") : '<p class="muted">No sales yet. Best sellers will appear here.</p>';
+
+  const low = act.filter(p => margin(p) !== null && margin(p) < 30).sort((a,b)=>margin(a)-margin(b));
+  $("margins").innerHTML = low.length ? `<p class="muted" style="margin:0 0 .5rem">Live products under 30% margin:</p>` + low.slice(0,10).map(p => `<div class="hbar"><span class="l">${esc(p.name)}</span><div class="t"><i style="width:${Math.max(3,Math.round(margin(p)/30*100))}%;background:var(--err)"></i></div><span class="r">${pct(margin(p))}</span></div>`).join("") : '<p class="muted">Every live product has a margin of 30% or more.</p>';
+
+  renderProductRows();
+}
+function renderProductRows(){
+  const q = $("pq").value.trim().toLowerCase(), f = $("pstat").value, sold = soldBy();
+  const list = D.products.filter(p => {
+    if(q && !String(p.name||"").toLowerCase().includes(q)) return false;
+    if(f === "live") return p.active; if(f === "hidden") return !p.active && p.listed_at; if(f === "new") return !p.listed_at; return true;
+  }).sort((a,b) => (b.active?1:0)-(a.active?1:0) || String(a.name).localeCompare(String(b.name)));
+  $("prows").innerHTML = list.slice(0,300).map(p => {
+    const m = margin(p);
+    const status = !p.listed_at ? "new" : p.active ? "live" : "hidden";
+    return `<tr><td>${esc((p.name||"").slice(0,70))}</td><td>${esc(catName(p.catalogue_id))}</td><td>${money(p.cost_price)}</td><td>${p.sell_price ? money(p.sell_price) : '<span class="muted">not set</span>'}</td><td>${m === null ? "–" : pct(m)}</td><td>${sold[p.id]||0}</td><td><span class="tag ${status==='live'?'paid':status==='hidden'?'cancelled':'pending'}">${status}</span></td></tr>`;
+  }).join("") || '<tr><td colspan="7" class="muted">No products match.</td></tr>';
+}
+$("pq").oninput = renderProductRows; $("pstat").onchange = renderProductRows;
+
+/* ---------- catalogues ---------- */
+function renderCatalogues(){
+  $("crows").innerHTML = D.catalogues.map(c => {
+    const ps = D.products.filter(p => p.catalogue_id === c.id);
+    const live1 = ps.filter(p => p.active), hid = ps.filter(p => !p.active && p.listed_at);
+    const avgP = live1.length ? live1.reduce((s,p)=>s+Number(p.sell_price||0),0)/live1.length : null;
+    const ms = live1.filter(p => margin(p) !== null), avgM = ms.length ? ms.reduce((s,p)=>s+margin(p),0)/ms.length : null;
+    const junk = isJunkName(c.name);
+    return `<tr data-id="${esc(c.id)}"><td>${esc(c.name.slice(0,60))}</td><td>${live1.length}</td><td>${hid.length}</td><td>${avgP===null?"–":money(avgP)}</td><td>${avgM===null?"–":pct(avgM)}</td><td>${junk ? '<span class="tag cancelled">rename or delete</span>' : live1.length ? '<span class="tag paid">shown in store</span>' : '<span class="tag pending">empty</span>'}</td><td>${c.image_url ? `<img src="${esc(c.image_url)}" alt="" style="width:44px;height:55px;object-fit:cover;border:1px solid var(--line)">` : '<span class="muted">none</span>'}</td><td style="white-space:nowrap"><button class="btn ghost sm" data-photo="${esc(c.id)}" type="button">Set photo</button> <button class="btn ghost sm" data-pick="${esc(c.id)}" type="button">Pick from products</button> <button class="btn ghost sm" data-ren="${esc(c.id)}" type="button">Rename</button> <button class="btn ghost sm" data-del="${esc(c.id)}" type="button" style="color:var(--err)">Delete</button></td></tr>`;
+  }).join("") || '<tr><td colspan="6" class="muted">No catalogues yet.</td></tr>';
+}
+
+$("cadd").onclick = async () => {
+  const name = $("cnew").value.trim(), m = $("cmsg");
+  if(name.length < 2){ m.className = "msg err"; m.textContent = "Please enter a name, at least 2 letters."; return; }
+  if(D.catalogues.some(c => c.name.toLowerCase() === name.toLowerCase())){ m.className = "msg err"; m.textContent = "A catalogue with that name already exists."; return; }
+  const { error } = await sb.from("catalogues").insert({ name });
+  if(error){ m.className = "msg err"; m.textContent = "Couldn't add: " + error.message; return; }
+  $("cnew").value = ""; m.className = "msg ok"; m.textContent = "Added \u201c" + name + "\u201d. It appears in the store once it has live products."; await load();
+};
+$("picker").addEventListener("click", async e => {
+  if(e.target.closest("#pickClose")){ $("picker").hidden = true; return; }
+  const cov = e.target.closest("button[data-cover]");
+  if(!cov) return;
+  const { error } = await sb.from("catalogues").update({ image_url: cov.dataset.cover }).eq("id", cov.dataset.cid);
+  const m = $("cmsg");
+  if(error){ m.className = "msg err"; m.textContent = "Couldn't set the cover: " + error.message; return; }
+  m.className = "msg ok"; m.textContent = "Cover photo updated. Refresh the store to see it."; await load();
+});
+$("picker").addEventListener("change", async e => {
+  const inp = e.target.closest("#upPhoto"); if(!inp || !inp.files || !inp.files[0]) return;
+  const file = inp.files[0], m = $("cmsg");
+  const catId = pendingCatId;
+  if(!catId){ m.className = "msg err"; m.textContent = "Open a catalogue first, then upload."; return; }
+  if(!/^image\/(jpeg|png|webp)$/.test(file.type)){ m.className = "msg err"; m.textContent = "Please choose a JPG, PNG or WebP photo."; return; }
+  if(file.size > 5 * 1024 * 1024){ m.className = "msg err"; m.textContent = "That photo is over 5 MB. Please choose a smaller one."; return; }
+  m.className = "msg"; m.textContent = "Uploading…";
+  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const path = catId + "/" + Date.now() + "." + ext;
+  const { error } = await sb.storage.from("catalogue-photos").upload(path, file, { contentType: file.type, cacheControl: "3600", upsert: false });
+  if(error){ m.className = "msg err"; m.textContent = "Upload failed: " + error.message; inp.value = ""; return; }
+  const url = sb.storage.from("catalogue-photos").getPublicUrl(path).data.publicUrl;
+  const { error: e2 } = await sb.from("catalogues").update({ image_url: url }).eq("id", catId);
+  if(e2){ m.className = "msg err"; m.textContent = "Uploaded, but couldn't save it: " + e2.message; return; }
+  m.className = "msg ok"; m.textContent = "Photo uploaded and set as the cover. Refresh the store to see it.";
+  inp.value = ""; await load();
+});
+let pendingCatId = null;
+$("cnew").onkeydown = e => { if(e.key === "Enter"){ e.preventDefault(); $("cadd").click(); } };
+$("crows").onclick = async e => {
+  const pick = e.target.closest("button[data-pick]");
+  if(pick){
+    const c = D.catalogues.find(x => x.id === pick.dataset.pick); if(!c) return;
+    pendingCatId = c.id;
+    const box = $("picker"); box.hidden = false;
+    const ps = D.products.filter(p => p.catalogue_id === c.id && p.image_url);
+    box.innerHTML = `<div class="sec-h" style="margin-bottom:.6rem"><h3>Choose a cover for \u201c${esc(c.name.slice(0,40))}\u201d</h3><button class="btn ghost sm" id="pickClose" type="button">Close</button></div>` +
+      `<div class="filters" style="margin:0 0 .8rem"><label class="btn ghost sm" style="cursor:pointer">Upload from this device<input id="upPhoto" type="file" accept="image/jpeg,image/png,image/webp" hidden></label><span class="muted" style="font-size:.8rem">JPG, PNG or WebP, up to 5 MB</span></div>` +
+      (ps.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:.6rem">${ps.map(p => `<button type="button" data-cover="${esc(p.image_url)}" data-cid="${esc(c.id)}" title="${esc(p.name)}" style="border:1px solid var(--line);background:#fff;padding:0;cursor:pointer"><img src="${esc(p.image_url)}" alt="" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block"><span style="display:block;font-size:.7rem;padding:.3rem;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${esc(p.name)}</span></button>`).join("")}</div>` : '<p class="muted">This catalogue has no products with photos yet.</p>');
+    box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    return;
+  }
+  const ren = e.target.closest("button[data-ren]"), del = e.target.closest("button[data-del]"), m = $("cmsg");
+  const pho = e.target.closest("button[data-photo]");
+  if(pho){
+    const c = D.catalogues.find(x => x.id === pho.dataset.photo); if(!c) return;
+    const url = (window.prompt("Paste the web address (https://…) of the photo for \u201c" + c.name.slice(0,40) + "\u201d.\nLeave empty to use the first product's photo instead.", c.image_url || "") || "").trim();
+    if(url && !/^https:\/\/\S+\.(jpg|jpeg|png|webp)(\?\S*)?$/i.test(url)){ m.className = "msg err"; m.textContent = "Please use a web address that starts with https:// and ends in .jpg, .png or .webp."; return; }
+    const { error } = await sb.from("catalogues").update({ image_url: url || null }).eq("id", c.id);
+    if(error){ m.className = "msg err"; m.textContent = "Couldn't save the photo: " + error.message; return; }
+    m.className = "msg ok"; m.textContent = url ? "Photo saved for \u201c" + c.name.slice(0,40) + "\u201d. Refresh the store to see it." : "Photo removed. The first product's photo will be used.";
+    await load(); return;
+  }
+  if(ren){
+    const c = D.catalogues.find(x => x.id === ren.dataset.ren); if(!c) return;
+    const name = (window.prompt("New name for this catalogue:", c.name) || "").trim();
+    if(!name || name === c.name) return;
+    if(name.length < 2){ m.className = "msg err"; m.textContent = "Please enter at least 2 letters."; return; }
+    const { error } = await sb.from("catalogues").update({ name }).eq("id", c.id);
+    if(error){ m.className = "msg err"; m.textContent = "Couldn't rename: " + error.message; return; }
+    m.className = "msg ok"; m.textContent = "Renamed to \u201c" + name + "\u201d."; await load();
+  }
+  if(del){
+    const c = D.catalogues.find(x => x.id === del.dataset.del); if(!c) return;
+    const n = D.products.filter(p => p.catalogue_id === c.id).length;
+    if(!window.confirm("Delete the catalogue \u201c" + c.name.slice(0,40) + "\u201d?" + (n ? "\n\n" + n + " product" + (n>1?"s":"") + " will stay in the store but have no catalogue." : "") + "\n\nIt will also disappear from the store's category tiles.")) return;
+    await sb.from("products").update({ catalogue_id: null }).eq("catalogue_id", c.id);
+    const { error } = await sb.from("catalogues").delete().eq("id", c.id);
+    if(error){ m.className = "msg err"; m.textContent = "Couldn't delete: " + error.message; return; }
+    m.className = "msg ok"; m.textContent = "Deleted \u201c" + c.name.slice(0,40) + "\u201d."; await load();
+  }
+};
+
+/* ---------- animation helpers ---------- */
+(function(){ const st = document.createElement("style"); st.textContent = ".dlg-tag{display:inline-block;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;padding:.2rem .6rem;border:1px solid var(--line);margin:0 0 .6rem}.dlg-tag.bad{color:#a32a2a;border-color:#e3b9b9;background:#fbeeee}.dlg-tag.warn{color:#8a5a0b;border-color:#e6d3a6;background:#fbf5e6}.dlg-tag.good{color:#2d6a3e;border-color:#b9d6c0;background:#eef6ef}.dlg-h{font-size:.82rem;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:.9rem 0 .25rem;font-weight:600}.dlg-steps{margin:.2rem 0 0 1.1rem;padding:0}.dlg-steps li{margin:.25rem 0}"; document.head.appendChild(st); })();
+function countUp(root){
+  root.querySelectorAll(".kpi .v").forEach(el => {
+    const raw = el.textContent.trim();
+    const m = raw.match(/^([^\d-]*)(-?[\d,]*\.?\d+)(.*)$/);
+    if(!m) return;
+    const pre = m[1], numText = m[2], suf = m[3];
+    const num = parseFloat(numText.replace(/,/g,""));
+    if(!isFinite(num)) return;
+    const dec = (numText.split(".")[1] || "").length;
+    const money2 = pre.includes("$") || dec > 0;
+    const digits = money2 ? (dec || 2) : 0;
+    const t0 = performance.now(), dur = 950;
+    const step = t => {
+      const k = Math.min(1, (t - t0) / dur), v = num * (1 - Math.pow(1 - k, 3));
+      el.textContent = pre + v.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits }) + suf;
+      if(k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+}
+function growIn(root){
+  root.querySelectorAll(".bars i, .hbar .t i, .col .bar").forEach(el => {
+    const prop = el.style.height ? "height" : "width", target = el.style[prop];
+    if(!target) return;
+    el.style.transition = "none"; el.style[prop] = "0px";
+    requestAnimationFrame(() => requestAnimationFrame(() => { el.style.transition = ""; el.style[prop] = target; }));
+  });
+}
+function animateView(root){ countUp(root); growIn(root); }
+
+/* ---------- customers ---------- */
+let currentCustomer = null;
+function openCustomer(email){
+  currentCustomer = email;
+  const box = $("custdetail"); box.hidden = false;
+  const e = String(email).toLowerCase();
+  const prof = D.profiles.find(p => String(p.email||"").toLowerCase() === e) || {};
+  const ords = D.orders.filter(o => String(o.customer_email||"").toLowerCase() === e).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  const msgs = D.notes.filter(n => String(n.to_email||"").toLowerCase() === e);
+  const addr = prof.delivery_address || (ords[0] && ords[0].shipping_address) || {};
+  const spent = ords.filter(o=>o.status!=="cancelled").reduce((s,o)=>s+Number(o.total||0),0);
+  const orderRows = ords.map(o => {
+    const its = itemsOf(o.id).map(i => `${i.quantity||1} × ${esc(clean_(i.product_name))}${i.label ? " ("+esc(i.label)+")" : ""}`).join("<br>");
+    return `<tr><td>${esc(fmtDate(o.created_at))}</td><td>${short(o.id)}</td><td style="font-size:.82rem">${its||"–"}</td><td>${money(o.total)}</td><td>${esc(o.tracking_number||"–")}</td><td><select data-id="${esc(o.id)}" aria-label="Status">${[...ISSUE,"cancelled"].map(s => `<option ${s===o.status?"selected":""} value="${s}">${s}</option>`).join("")}</select>${o.status!=="cancelled"&&o.status!=="delivered"?` <button class="btn ghost sm" data-cancel="${esc(o.id)}" type="button">Cancel</button>`:""}</td></tr>`;
+  }).join("") || '<tr><td colspan="6" class="muted">No orders from this customer yet.</td></tr>';
+  const msgRows = msgs.map(n => `<details style="margin:.35rem 0;border:1px solid var(--line);padding:.5rem .7rem;background:#fff"><summary style="cursor:pointer"><span class="tag ${esc(n.status)}">${esc(n.status)}</span> ${esc((n.kind||"").replace(/_/g," "))} · ${esc(fmtTime(n.sent_at||n.created_at))} · <span class="muted">${esc((n.subject||"").slice(0,60))}</span></summary><pre style="white-space:pre-wrap;font:inherit;font-size:.86rem;margin:.5rem 0 0">${esc(n.body || n.error || "No text stored.")}</pre></details>`).join("") || '<p class="muted">No messages sent to this customer yet.</p>';
+  box.innerHTML = `<div class="sec-h" style="margin-bottom:.6rem"><h3>${esc(prof.full_name || ords[0]?.customer_name || email)}</h3><button class="btn ghost sm" id="closecust" type="button">Close</button></div>
+    <p style="margin:0 0 .3rem">${esc(email)}</p>
+    <p class="muted" style="margin:0 0 .8rem;font-size:.88rem">${esc([addr.line1, addr.city, addr.postal, addr.country || addr.region].filter(Boolean).join(", ") || "No delivery address saved")}</p>
+    <p style="margin:0 0 .8rem"><b>${ords.length}</b> order${ords.length===1?"":"s"} · <b>${money(spent)}</b> spent (excluding cancelled)</p>
+    <div class="wrapx" style="max-height:none"><table><thead><tr><th>Date</th><th>Order</th><th>Items</th><th>Total</th><th>Tracking</th><th>Status</th></tr></thead><tbody>${orderRows}</tbody></table></div>
+    <p class="msg" id="detailmsg" role="status" style="margin:.5rem 0 1rem"></p>
+    <h3 style="font-size:1.2rem;margin-bottom:.4rem">Messages sent to this customer</h3>${msgRows}`;
+  $("closecust").onclick = () => { box.hidden = true; currentCustomer = null; };
+  box.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function clean_(s){ return String(s ?? "").replace(/https?:\/\/\S*cj\S*/gi,"").replace(/\S*cj(dropship\S*|packet\S*|logistic\S*)?\S*/gi,m=>(/cj/i.test(m)?"":m)).replace(/\s{2,}/g," ").trim() || "Item"; }
+$("custdetail").onchange = e => { const sel = e.target.closest("select[data-id]"); if(sel) applyStatus(sel, true); };
+$("custdetail").onclick = e => { const btn = e.target.closest("button[data-cancel]"); if(btn){ const sel = $("custdetail").querySelector('select[data-id="'+btn.dataset.cancel+'"]'); if(sel){ sel.value = "cancelled"; applyStatus(sel, true); } } };
+$("cust").onclick = e => { const tr = e.target.closest("tr[data-email]"); if(tr) openCustomer(tr.dataset.email); };
+
+function renderCustomers(){
+  const spent = {}, count = {};
+  for(const o of live()){ if(!o.user_id) continue; spent[o.user_id] = (spent[o.user_id]||0) + Number(o.total||0); count[o.user_id] = (count[o.user_id]||0) + 1; }
+  const withAddr = D.profiles.filter(p => p.delivery_address).length;
+  $("ckpis").innerHTML = [["Accounts", D.profiles.length], ["With address", withAddr], ["Placed orders", Object.keys(count).length], ["Signed in last 30 days", D.profiles.filter(p => p.last_sign_in_at && (Date.now()-new Date(p.last_sign_in_at))<2592e6).length]]
+    .map(([l,v]) => `<div class="kpi"><div class="l">${esc(l)}</div><div class="v">${v}</div></div>`).join("");
+  const q = $("cq").value.trim().toLowerCase();
+  const list = D.profiles.filter(p => !q || [p.full_name,p.email].some(x => String(x||"").toLowerCase().includes(q)));
+  $("custcount").textContent = list.length + " of " + D.profiles.length;
+  $("cust").innerHTML = list.map(p => `<tr data-email="${esc(p.email||"")}" style="cursor:pointer"><td>${esc(p.full_name||"")}</td><td>${esc(p.email||"")}</td><td>${esc(fmtDate(p.created_at))}</td><td>${esc(fmtDate(p.last_sign_in_at))}</td><td>${esc((p.delivery_address||{}).region||"–")}</td><td>${count[p.id]||0}</td><td>${spent[p.id]?money(spent[p.id]):"–"}</td></tr>`).join("") || '<tr><td colspan="7" class="muted">No customers match.</td></tr>';
+}
+$("cq").oninput = renderCustomers;
+
+/* ---------- shipping ---------- */
+function renderShipping(){
+  const L = live();
+  $("shiprows").innerHTML = D.rates.map(r => {
+    const os = L.filter(o => (o.shipping_address||{}).region === r.name);
+    const rev = os.reduce((s,o)=>s+Number(o.total||0),0);
+    return `<tr><td>${esc(r.name)}</td><td>${money(r.fee)}</td><td>${money(r.extra_fee)}</td><td>${r.active?'<span class="tag paid">yes</span>':'<span class="tag cancelled">no</span>'}</td><td>${os.length}</td><td>${money(rev)}</td></tr>`;
+  }).join("") || '<tr><td colspan="6" class="muted">No shipping regions set.</td></tr>';
+  const regionCount = {}; for(const o of L){ const r = (o.shipping_address||{}).region || "Unknown"; regionCount[r] = (regionCount[r]||0)+1; }
+  const entries = Object.entries(regionCount).sort((a,b)=>b[1]-a[1]), max = Math.max(1, ...Object.values(regionCount));
+  $("shipmap").innerHTML = entries.length ? entries.map(([k,v]) => `<div class="hbar"><span class="l">${esc(k)}</span><div class="t"><i style="width:${Math.round(v/max*100)}%"></i></div><span class="r">${v}</span></div>`).join("") : '<p class="muted">No orders yet.</p>';
+  const inc = L.reduce((s,o)=>s+Number(o.shipping_fee||0),0), goods = L.reduce((s,o)=>s+Number(o.total||0)-Number(o.shipping_fee||0),0);
+  $("shipinc").innerHTML = `<p style="margin:0 0 .4rem">Shipping collected: <b>${money(inc)}</b></p><p style="margin:0 0 .4rem">Product sales: <b>${money(goods)}</b></p><p class="muted" style="margin:0;font-size:.85rem">Compare the shipping fee with what CJ charges you on the CJ sync page to check you aren't losing money on delivery.</p>`;
+}
+
+/* ---------- messages ---------- */
+function renderMessages(){
+  renderComposer();
+  const failed = D.notes.filter(n => n.status === "failed");
+  const brevo = failed.find(n => /Brevo key/i.test(n.error||""));
+  $("mnotice").innerHTML = brevo ? `<div class="notice err"><b>Customer emails are not being sent.</b> The Brevo API key is missing from Supabase Vault. Add it as <code>brevo_api_key</code>, then place a test order.</div>` : failed.length ? `<div class="notice warn">${failed.length} message${failed.length>1?"s":""} failed. See the Detail column.</div>` : D.notes.length ? `<div class="notice ok">All recent messages were delivered.</div>` : `<div class="notice">No messages yet. They appear here once an order is placed.</div>`;
+  const f = $("mstat").value;
+  const list = D.notes.filter(n => !f || n.status === f);
+  $("mcount").textContent = list.length + " shown";
+  const orderOf = id => D.orders.find(o => o.id === id);
+  $("mrows").innerHTML = list.map(n => `<tr><td>${esc(fmtTime(n.created_at))}</td><td>${esc((n.kind||"").replace(/_/g," "))}<div class="muted" style="font-size:.78rem">${esc((n.subject||"").slice(0,70))}</div></td><td>${esc(n.to_email||"")}</td><td>${orderOf(n.order_id)?short(n.order_id):"–"}</td><td><span class="tag ${esc(n.status)}">${esc(n.status)}</span></td><td class="muted" style="font-size:.8rem">${esc((n.error||"").slice(0,140))}</td></tr>`).join("") || '<tr><td colspan="6" class="muted">Nothing here.</td></tr>';
+}
+$("mstat").onchange = renderMessages;
+function renderComposer(){
+  const emails = new Map();
+  for(const p of D.profiles) if(p.email) emails.set(p.email.toLowerCase(), p.full_name || p.email);
+  for(const o of D.orders) if(o.customer_email && !emails.has(o.customer_email.toLowerCase())) emails.set(o.customer_email.toLowerCase(), o.customer_name || o.customer_email);
+  const prev = $("cTo").value;
+  $("cTo").innerHTML = emails.size ? [...emails].map(([e,n]) => `<option value="${esc(e)}">${esc(n)} · ${esc(e)}</option>`).join("") : '<option value="">No customers yet</option>';
+  if(prev && emails.has(prev)) $("cTo").value = prev;
+  const ords = D.orders.slice(0, 200), prevO = $("cOrder").value;
+  $("cOrder").innerHTML = '<option value="">None</option>' + ords.map(o => `<option value="${esc(o.id)}">${short(o.id)} · ${esc(o.customer_email||"")} · ${money(o.total)}</option>`).join("");
+  if(prevO) $("cOrder").value = prevO;
+  // keep the order list in step with the customer
+  $("cTo").onchange = () => { const hit = D.orders.find(o => String(o.customer_email||"").toLowerCase() === $("cTo").value); if(hit) $("cOrder").value = hit.id; };
+}
+$("cBody").oninput = () => { $("cCount").textContent = $("cBody").value.length + " / 5000"; };
+$("cSend").onclick = async () => {
+  const m = $("cMsg"); m.className = "msg";
+  const to = $("cTo").value, subject = $("cSubj").value.trim(), body = $("cBody").value.trim();
+  if(!to){ m.className = "msg err"; m.textContent = "Choose a customer."; return; }
+  if(subject.length < 2){ m.className = "msg err"; m.textContent = "Add a subject."; return; }
+  if(body.length < 2){ m.className = "msg err"; m.textContent = "Type a message first."; return; }
+  if(!window.confirm("Send this message to " + to + "?")) return;
+  $("cSend").disabled = true; m.textContent = "Sending…";
+  const { data, error } = await sb.functions.invoke("send-message", { body: { to, subject, body, order_id: $("cOrder").value || null } });
+  $("cSend").disabled = false;
+  let msg = error ? "Couldn't send. Please try again." : (data && data.error) || null;
+  if(error){ try { const j = await error.context.json(); if(j && j.error) msg = j.error; } catch(_){} }
+  if(msg || !data || !data.ok){ m.className = "msg err"; m.textContent = msg || "Couldn't send. Please try again."; return; }
+  m.className = "msg ok"; m.textContent = "Sent to " + to + ". It appears in the Messages list below.";
+  $("cSubj").value = ""; $("cBody").value = ""; $("cCount").textContent = "0 / 5000";
+  await load();
+};
+
+/* ---------- CJ ---------- */
+$("cjCheck").onclick = async () => {
+  const m = $("cjmsg"); m.className = "msg"; m.textContent = "Checking…";
+  const { data, error } = await sb.functions.invoke("cj-sync", { body: { ping: true } });
+  if(error){ m.className = "msg err"; m.textContent = "CJ did not respond. Try again in a minute."; return; }
+  const ok = data && (data.ok === true || data.connected === true || data.status === "ok");
+  m.className = "msg " + (ok ? "ok" : "err");
+  m.textContent = ok ? "CJ is connected." : "CJ returned an error: " + ((data && (data.error || data.message)) || "unknown");
+  const { error: logErr } = await sb.from("cj_sync_log").insert({ status: ok ? "ok" : "error", message: ok ? "Manual check from store management: CJ connected" : "Manual check: " + ((data && (data.error || data.message)) || "no reply") });
+  if(logErr) m.textContent += " (could not write to the log: " + logErr.message + ")";
+  await load();
+};
+let CU = [];
+const CU_TYPES = {
+  catalogue: "Empty or junk catalogues",
+  cjlog: "Old CJ activity log lines (older than 30 days)",
+  mail: "Old email records (older than 90 days, not failed)",
+  photo: "Catalogue photos no longer used"
+};
+function cuItem(type, label, detail, ref, safe){ return { type, label, detail, ref, safe, checked: safe }; }
+$("cuScan").onclick = async () => {
+  const m = $("cuMsg"); m.className = "msg"; m.textContent = "Scanning…";
+  const items = [];
+  const jr = s => /https?:\/\/|cjdropship|^CJ[A-Z0-9]{6,}|^[A-Z]{2}\d{6,}/i.test(s || "") || (s || "").length > 32;
+  for(const c of D.catalogues){
+    const n = D.products.filter(p => p.catalogue_id === c.id).length;
+    if(n === 0) items.push(cuItem("catalogue", c.name.slice(0,60), "No products are in this catalogue" + (c.image_url ? " (has a cover photo)" : ""), c.id, true));
+    else if(jr(c.name)) items.push(cuItem("catalogue", c.name.slice(0,60), "Name looks like a product title or CJ code. Its " + n + " product" + (n>1?"s":"") + " will stay in the store with no catalogue.", c.id, false));
+  }
+  const cut30 = new Date(Date.now() - 30*864e5).toISOString();
+  const cj = await sb.from("cj_sync_log").select("id", { count: "exact", head: true }).lt("created_at", cut30);
+  if(cj.count) items.push(cuItem("cjlog", cj.count + " activity log line" + (cj.count>1?"s":""), "Older than 30 days. Only the history list is affected.", cut30, true));
+  const cut90 = new Date(Date.now() - 90*864e5).toISOString();
+  const mail = await sb.from("notifications").select("id", { count: "exact", head: true }).lt("created_at", cut90).neq("status", "failed");
+  if(mail.count) items.push(cuItem("mail", mail.count + " old email record" + (mail.count>1?"s":""), "Older than 90 days and sent. The emails themselves are not affected.", cut90, true));
+  const used = new Set(D.catalogues.map(c => c.image_url).filter(Boolean));
+  const folders = await sb.storage.from("catalogue-photos").list("", { limit: 500 });
+  for(const f of (folders.data || []).filter(x => !x.id)){
+    const files = await sb.storage.from("catalogue-photos").list(f.name, { limit: 500 });
+    for(const file of (files.data || [])){
+      const path = f.name + "/" + file.name;
+      const url = sb.storage.from("catalogue-photos").getPublicUrl(path).data.publicUrl;
+      if(!used.has(url)) items.push(cuItem("photo", "Photo " + file.name, "Not set as a cover on any catalogue", path, true));
+    }
+  }
+  CU = items;
+  renderCU();
+  m.className = "msg " + (items.length ? "" : "ok"); m.textContent = items.length ? items.length + " item" + (items.length>1?"s":"") + " found. Tick what you want to remove." : "Nothing unused was found.";
+};
+function renderCU(){
+  const box = $("cuList");
+  if(!CU.length){ box.innerHTML = ""; $("cuActions").hidden = true; return; }
+  box.innerHTML = Object.keys(CU_TYPES).map(t => {
+    const rows = CU.map((x,i) => ({x,i})).filter(({x}) => x.type === t);
+    if(!rows.length) return "";
+    return `<div class="panel" style="margin-top:.8rem"><h3>${esc(CU_TYPES[t])}</h3>` + rows.map(({x,i}) => `<label style="display:flex;gap:.7rem;align-items:flex-start;padding:.55rem 0;border-bottom:1px solid var(--line);cursor:pointer"><input type="checkbox" data-cu="${i}" ${x.checked?"checked":""} style="margin-top:.25rem"><span><b>${esc(x.label)}</b><br><span class="muted" style="font-size:.85rem">${esc(x.detail)}</span></span></label>`).join("") + `</div>`;
+  }).join("");
+  box.oninput = box.onchange = e => { const i = e.target.dataset.cu; if(i !== undefined) CU[Number(i)].checked = e.target.checked; updateCUCount(); };
+  $("cuActions").hidden = false; updateCUCount();
+}
+function updateCUCount(){ const n = CU.filter(x => x.checked).length; $("cuCount").textContent = n + " selected of " + CU.length + ". Nothing is deleted yet."; }
+$("cuDelete").onclick = async () => {
+  const chosen = CU.filter(x => x.checked); const m = $("cuMsg");
+  if(!chosen.length){ m.className = "msg err"; m.textContent = "Tick at least one item."; return; }
+  const list = chosen.map(x => "• " + x.label).join("\n");
+  const typed = window.prompt("You are about to permanently delete " + chosen.length + " item(s):\n\n" + list.slice(0, 900) + "\n\nType DELETE to confirm.", "");
+  if(typed !== "DELETE"){ m.className = "msg err"; m.textContent = "Nothing was deleted."; return; }
+  $("cuDelete").disabled = true; m.className = "msg"; m.textContent = "Deleting…";
+  const failed = [];
+  for(const x of chosen){
+    let error = null;
+    if(x.type === "catalogue"){ ({ error } = await sb.from("catalogues").delete().eq("id", x.ref)); }
+    if(x.type === "cjlog"){ ({ error } = await sb.from("cj_sync_log").delete().lt("created_at", x.ref)); }
+    if(x.type === "mail"){ ({ error } = await sb.from("notifications").delete().lt("created_at", x.ref).neq("status", "failed")); }
+    if(x.type === "photo"){ ({ error } = await sb.storage.from("catalogue-photos").remove([x.ref])); }
+    if(error) failed.push(x.label + ": " + error.message);
+  }
+  $("cuDelete").disabled = false;
+  CU = []; renderCU();
+  m.className = "msg " + (failed.length ? "err" : "ok");
+  m.textContent = failed.length ? "Some items could not be deleted: " + failed.join("; ") : "Done. Unused items were removed.";
+  await load();
+};
+
+let SYNC = [], syncStop = false;
+const SYNC_FIELD_NOTE = { cost_price: "Updates your cost to CJ's current price. Your selling price stays as it is.", image_url: "Replaces the main photo with CJ's current photo.", name: "Updates the product name to CJ's wording." };
+function fmtVal(f, v){ if(v === null || v === undefined || v === "") return "none"; if(f === "cost_price") return "$" + Number(v).toFixed(2); if(f === "image_url") return v === "none" ? "none" : "photo"; return String(v); }
+$("syncScan").onclick = async () => {
+  SYNC = []; syncStop = false; renderSync();
+  const m = $("syncMsg"); $("syncScan").disabled = true; $("syncStop").hidden = false;
+  let offset = 0, total = 0, done = false, checked = 0;
+  m.className = "msg"; m.textContent = "Starting…";
+  while(!done && !syncStop){
+    m.className = "msg"; m.textContent = "Asking CJ about products " + (offset + 1) + " to " + Math.min(total || offset + 2, offset + 2) + (total ? " of " + total : "") + "… this can take up to a minute.";
+    const timeout = new Promise(res => setTimeout(() => res({ data: null, error: { timedOut: true } }), 75000));
+    const { data, error } = await Promise.race([sb.functions.invoke("cj-preview", { body: { offset, limit: 2 } }), timeout]);
+    if(error && error.timedOut){ m.className = "msg err"; m.textContent = "CJ did not reply within 75 seconds. Try again in a minute, or press Stop."; break; }
+    if(error || !data || data.ok === false){
+      let msg = (data && data.error) || "CJ comparison failed. Please try again.";
+      if(error){ try { const j = await error.context.json(); if(j && j.error) msg = j.error; } catch(_){} }
+      m.className = "msg err"; m.textContent = msg; break;
+    }
+    total = data.total || total; checked = Math.min(total, (data.next ?? offset));
+    const batch = (data.results || []).map(r => ({ ...r, picked: {} }));
+    for(const r of batch) for(const c of (r.changes || [])) r.picked[c.field] = c.field !== "name";
+    SYNC.push(...batch);
+    $("syncBar").style.width = (total ? Math.round(checked / total * 100) : 100) + "%";
+    m.className = "msg"; m.textContent = "Checked " + checked + " of " + total + "…";
+    renderSync();
+    done = data.done === true || !total; offset = data.next ?? offset + 2;
+  }
+  $("syncScan").disabled = false; $("syncStop").hidden = true;
+  if(syncStop) { $("syncMsg").className = "msg"; $("syncMsg").textContent = "Stopped. Results so far are below."; }
+  const withChanges = SYNC.filter(r => r.changes && r.changes.length).length;
+  const errors = SYNC.filter(r => r.error).length;
+  if(!m.classList.contains("err")){ m.className = "msg ok"; m.textContent = withChanges ? withChanges + " product" + (withChanges>1?"s":"") + " differ from CJ. Review below." : "Everything matches CJ. Nothing to change." + (errors ? " " + errors + " could not be checked." : ""); }
+  renderSync();
+};
+$("syncStop").onclick = () => { syncStop = true; };
+function renderSync(){
+  const box = $("syncList");
+  if(!SYNC.length){ box.innerHTML = ""; $("syncActions").hidden = true; return; }
+  box.innerHTML = SYNC.map((r, i) => {
+    const rows = (r.changes || []).map(c => `<label style="display:grid;grid-template-columns:auto 1fr;gap:.6rem;padding:.55rem 0;border-top:1px solid var(--line);cursor:pointer"><input type="checkbox" data-sy="${i}" data-f="${esc(c.field)}" ${r.picked[c.field] ? "checked" : ""} style="margin-top:.2rem"><span><b>${esc(c.label)}</b> <span class="muted" style="font-size:.8rem">· ${esc(SYNC_FIELD_NOTE[c.field] || "")}</span><br><span style="font-size:.92rem">${esc(fmtVal(c.field, c.from))}  <span style="color:var(--mute)">→</span>  <b>${esc(fmtVal(c.field, c.to))}</b></span></span></label>`).join("");
+    const head = r.error ? `<span class="tag cancelled">could not check</span>` : (r.changes && r.changes.length ? `<span class="tag pending">${r.changes.length} change${r.changes.length>1?"s":""}</span>` : `<span class="tag paid">matches CJ</span>`);
+    const warn = r.warning ? `<p style="margin:.4rem 0 0;color:#8a5a0b;font-size:.86rem">${esc(r.warning)}</p>` : "";
+    const err = r.error ? `<p class="muted" style="margin:.4rem 0 0;font-size:.86rem">${esc(r.error)}</p>` : "";
+    return `<div class="panel" style="margin-top:.7rem"><div style="display:flex;justify-content:space-between;gap:.6rem;align-items:center"><b>${esc((r.name||"").slice(0,70))}</b>${head}</div>${rows}${warn}${err}</div>`;
+  }).join("");
+  box.oninput = box.onchange = e => { const t = e.target; if(t.dataset.sy !== undefined){ SYNC[Number(t.dataset.sy)].picked[t.dataset.f] = t.checked; updateSyncCount(); } };
+  $("syncActions").hidden = false; updateSyncCount();
+}
+function updateSyncCount(){
+  let n = 0; for(const r of SYNC) for(const c of (r.changes||[])) if(r.picked[c.field]) n++;
+  $("syncCount").textContent = n + " change" + (n===1?"":"s") + " selected. Nothing is saved yet.";
+}
+$("syncApply").onclick = async () => {
+  const todo = []; for(const r of SYNC) for(const c of (r.changes||[])) if(r.picked[c.field]) todo.push({ r, c });
+  const m = $("syncMsg");
+  if(!todo.length){ m.className = "msg err"; m.textContent = "Tick at least one change."; return; }
+  const lines = todo.slice(0, 12).map(({r,c}) => "• " + (r.name||"").slice(0,40) + ": " + c.label + " " + fmtVal(c.field,c.from) + " → " + fmtVal(c.field,c.to)).join("\n") + (todo.length > 12 ? "\n…and " + (todo.length-12) + " more" : "");
+  if(!window.confirm("Apply " + todo.length + " change" + (todo.length>1?"s":"") + " to your products?\n\n" + lines)) return;
+  $("syncApply").disabled = true; m.className = "msg"; m.textContent = "Applying…";
+  const failed = [];
+  for(const { r, c } of todo){
+    const { error } = await sb.from("products").update({ [c.field]: c.to }).eq("id", r.id);
+    if(error) failed.push((r.name||"").slice(0,30) + " (" + c.label + "): " + error.message);
+  }
+  $("syncApply").disabled = false;
+  await sb.from("cj_sync_log").insert({ status: failed.length ? "error" : "ok", message: "Product sync from store management: " + (todo.length - failed.length) + " change(s) applied" + (failed.length ? ", " + failed.length + " failed" : "") });
+  m.className = "msg " + (failed.length ? "err" : "ok");
+  m.textContent = failed.length ? "Some changes failed: " + failed.join("; ") : "Applied " + todo.length + " change" + (todo.length>1?"s":"") + ". The store shows them after a refresh.";
+  SYNC = []; renderSync(); await load();
+};
+
+function renderCJ(){
+  const ok = D.cj.filter(r => r.status === "ok").length, err = D.cj.filter(r => r.status === "error").length;
+  $("cjkpis").innerHTML = [["Successful syncs", ok], ["Errors", err], ["Last activity", D.cj[0] ? fmtTime(D.cj[0].created_at) : "–"], ["Log entries", D.cj.length]]
+    .map(([l,v]) => `<div class="kpi"><div class="l">${esc(l)}</div><div class="v" style="font-size:1.35rem">${esc(v)}</div></div>`).join("");
+  $("cjrows").innerHTML = D.cj.slice(0,100).map(r => `<tr><td>${esc(fmtTime(r.created_at))}</td><td><span class="tag ${r.status==='ok'?'paid':'cancelled'}">${esc(r.status)}</span></td><td>${esc(r.message||"")}</td></tr>`).join("") || '<tr><td colspan="3" class="muted">No CJ activity yet.</td></tr>';
+}
+
+/* ---------- start ---------- */
+(async () => { if(await checkSession()) load(); })();
+
+// ---- No photo: products without a picture
+function npRows(){ return (D.products || []).filter(p => !p.image_url || !String(p.image_url).trim()); }
+function npRender(){
+  const rows = npRows();
+  $("npCount").textContent = rows.length;
+  $("npCount2").textContent = "";
+  if(!rows.length){
+    $("npList").innerHTML = '<p class="empty">Every product has a photo.</p>';
+    $("npActions").hidden = true; return;
+  }
+  const cat = id => { const c = (D.catalogues || []).find(x => x.id === id); return c ? c.name : "No catalogue"; };
+  $("npList").innerHTML = '<div class="wrapx"><table><thead><tr><th></th><th>Product</th><th>Catalogue</th><th>Status</th></tr></thead><tbody>'
+    + rows.map(p => `<tr><td><input type="checkbox" class="np-sel" data-id="${esc(p.id)}"></td><td>${esc((p.name || "").slice(0, 60))}</td><td>${esc(cat(p.catalogue_id))}</td><td>${p.active ? "In store" : "Hidden"}</td></tr>`).join("")
+    + '</tbody></table></div>';
+  $("npActions").hidden = false;
+  npSelCount();
+}
+function npSelCount(){
+  const n = document.querySelectorAll(".np-sel:checked").length;
+  $("npCount2").textContent = n + " selected";
+}
+$("npList").onchange = e => { if(e.target.classList.contains("np-sel")) npSelCount(); };
+$("npAll").onclick = () => {
+  const boxes = [...document.querySelectorAll(".np-sel")];
+  const allOn = boxes.length && boxes.every(b => b.checked);
+  boxes.forEach(b => b.checked = !allOn);
+  npSelCount();
+};
+$("npCJ").onclick = () => openTab("cj");
+$("npDelete").onclick = async () => {
+  const ids = [...document.querySelectorAll(".np-sel:checked")].map(b => b.dataset.id);
+  const m = $("npMsg");
+  if(!ids.length){ m.className = "msg err"; m.textContent = "Tick at least one product."; return; }
+  if(!window.confirm("Delete " + ids.length + " product" + (ids.length > 1 ? "s" : "") + " with no photo? This can't be undone.")) return;
+  $("npDelete").disabled = true; m.className = "msg"; m.textContent = "Deleting…";
+  const { error } = await sb.from("products").delete().in("id", ids);
+  $("npDelete").disabled = false;
+  if(error){ m.className = "msg err"; m.textContent = "Could not delete: " + error.message; return; }
+  m.className = "msg ok"; m.textContent = "Deleted " + ids.length + " product" + (ids.length > 1 ? "s" : "") + ".";
+  await load(); npRender();
+};
+document.querySelector('#tabs button[data-t="nophoto"]').addEventListener("click", () => npRender());
+</script>
+</body>
+</html>

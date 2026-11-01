@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Varèle Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{--bg:#fff;--ink:#16161a;--mute:#76736d;--line:#e8e5e0;--soft:#f5f3f0;--navy:#1f2a44;--err:#a32a2a;--ok:#2b6a4a;--newbg:#fff3d6;--newink:#7a5200}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "DM Sans",system-ui,sans-serif}
+h1,h2,.logo{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600}
+button,select,input{font:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--navy);outline-offset:2px}
+.bar{background:var(--navy);color:#fff;text-align:center;font-size:.85rem;padding:.5rem 1rem}
+header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--line)}
+.logo{font-size:2rem;letter-spacing:.03em;line-height:1;text-decoration:none;color:var(--ink)}
+.logo small{font:500 .8rem "DM Sans",system-ui,sans-serif;color:var(--mute);letter-spacing:0;margin-left:.5rem}
+.hn{display:flex;gap:.6rem;align-items:center}
+.hn a,.hn button{color:var(--ink);text-decoration:none;border:1px solid var(--line);background:none;padding:.45rem .8rem;border-radius:2px;font-size:.9rem;white-space:nowrap}
+@media(max-width:420px){.logo small{display:none}}
+main{max-width:900px;margin:0 auto;padding:1.5rem 1.25rem 4rem}
+h2{font-size:1.6rem;margin:0 0 .75rem}
+label{display:block;font-size:.9rem;color:var(--mute);margin:1rem 0 .3rem}
+input[type=text],input[type=email],input[type=password],input[type=number],input[type=search],select{width:100%;padding:.7rem .8rem;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:2px}
+.btn{background:var(--navy);color:#fff;border:1px solid var(--navy);padding:.7rem 1.3rem;border-radius:2px}
+.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:2px}
+button:disabled{opacity:.5;cursor:wait}
+.msg{min-height:1.4rem;font-size:.95rem;margin:.6rem 0}
+.err{color:var(--err)}.ok{color:var(--ok)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:520px){.row2{grid-template-columns:1fr}}
+[hidden]{display:none!important}
+.box{max-width:420px;margin:2rem auto}
+
+/* import panel */
+.imp{border:1px solid var(--line);border-radius:2px;margin:1.2rem 0 .6rem}
+.imp>summary{cursor:pointer;padding:.9rem 1rem;font-weight:500;list-style:none;display:flex;justify-content:space-between}
+.imp>summary::-webkit-details-marker{display:none}
+.imp>summary::after{content:"+";color:var(--mute);font-size:1.2rem;line-height:1}
+.imp[open]>summary::after{content:"–"}
+.imp .in{padding:0 1rem 1.1rem;border-top:1px solid var(--line)}
+.more{margin-top:.6rem}
+.more summary{cursor:pointer;color:var(--mute);font-size:.9rem;padding:.3rem 0}
+.chk{display:flex;align-items:center;gap:.5rem;color:var(--ink);font-size:.95rem;margin:1rem 0 .2rem}
+.chk input{width:auto}
+
+/* tabs */
+.tabs{display:flex;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:.8rem 1rem;color:var(--mute);white-space:nowrap}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--navy);font-weight:500}
+.tabs .n{display:inline-block;min-width:1.5rem;text-align:center;font-size:.8rem;background:var(--soft);color:var(--ink);border-radius:999px;padding:0 .4rem;margin-left:.3rem}
+.tabs button[data-tab=new] .n{background:var(--newbg);color:var(--newink)}
+.find{margin:1rem 0 0}
+
+/* bulk bar */
+.bulk{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;padding:.6rem 0;position:sticky;top:0;background:var(--bg);z-index:3;border-bottom:1px solid var(--line);margin-top:.6rem}
+.bulk button,.bulk select{padding:.45rem .85rem;width:auto;max-width:11rem}
+.vis{display:flex;align-items:center;gap:.4rem;margin:0;color:var(--ink)}
+.vis input{width:auto}
+.note{font-size:.88rem;color:var(--mute)}
+
+/* rows */
+.day{margin:1.4rem 0 .2rem;font-size:.9rem;color:var(--mute)}
+.p{display:grid;grid-template-columns:20px 64px 1fr;gap:.2rem .8rem;align-items:start;padding:1rem 0;border-bottom:1px solid var(--line)}
+.p img{width:64px;height:64px;object-fit:cover;background:var(--soft);display:block}
+.p .t b{font-weight:500;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3}
+.p .t small{display:block;color:var(--mute);margin-top:.2rem}
+.tags{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.35rem}
+.tag{font-size:.75rem;padding:.05rem .5rem;border-radius:999px;border:1px solid var(--line);color:var(--mute)}
+.tag.new{background:var(--newbg);border-color:var(--newbg);color:var(--newink)}
+.tag.warn{border-color:#e7c9c9;color:var(--err)}
+.ctl{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.6rem}
+.ctl .price{display:flex;align-items:center;border:1px solid var(--line);border-radius:2px;padding-left:.6rem;color:var(--mute);margin:0}
+.ctl .price input{border:0;width:6rem;padding:.5rem .5rem .5rem .2rem}
+.ctl select{width:auto;padding:.5rem .6rem;max-width:10rem}
+.ctl button,.ctl a.view{padding:.5rem 1rem}
+.ctl a.view{border:1px solid var(--line);border-radius:2px;color:var(--ink);text-decoration:none}
+.empty{color:var(--mute);padding:2rem 0}
+.sel{width:18px;height:18px;margin-top:.2rem}
+
+/* connection */
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin:1.2rem 0}
+@media(max-width:620px){.cards{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);padding:1rem;border-radius:2px}
+.card span{color:var(--mute);font-size:.85rem}
+.card strong{display:block;font:600 1.5rem "Cormorant Garamond",Georgia,serif;margin:.1rem 0}
+.log{width:100%;border-collapse:collapse;font-size:.9rem;margin-top:.6rem}
+.log td{padding:.45rem .3rem;border-bottom:1px solid var(--line);vertical-align:top}
+.log td:first-child{white-space:nowrap;color:var(--mute)}
+.sr{display:grid;grid-template-columns:1fr 6.5rem 6.5rem;gap:.5rem;align-items:center;padding:.8rem 0;border-bottom:1px solid var(--line)}
+.sr .nm{grid-column:1/-1}
+.sr .money{display:flex;align-items:center;border:1px solid var(--line);border-radius:2px;padding-left:.6rem;color:var(--mute);margin:0}
+.sr .money input{border:0;padding:.5rem .4rem .5rem .2rem;width:100%}
+.sr .acts{grid-column:1/-1;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.sr small{color:var(--mute);font-size:.8rem}
+.cu{display:grid;grid-template-columns:1fr auto;gap:.1rem .8rem;padding:.9rem 0;border-bottom:1px solid var(--line)}
+.cu b{font-weight:500}.cu small{color:var(--mute)}.cu .r{text-align:right}
+.tabs{overflow-x:auto;flex-wrap:nowrap;white-space:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
+</style>
+</head>
+<body>
+<div class="bar">Admin · changes show in the store right away</div>
+<header>
+  <a class="logo" href="varele-store.html">Varèle<small>Admin</small></a>
+  <div class="hn"><a id="viewstore" href="varele-store.html">View store</a><button id="out" hidden>Sign out</button></div>
+</header>
+
+<main>
+  <div id="login" class="box" hidden>
+    <h2>Admin sign in</h2>
+    <label for="em">Email</label><input id="em" type="email" autocomplete="username">
+    <label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password">
+    <p><button class="btn" id="go">Sign in</button></p>
+    <div class="msg" id="lmsg" role="status"></div>
+  </div>
+
+  <div id="denied" class="box" hidden>
+    <h2>Admins only</h2>
+    <p>You are signed in as <b id="who"></b>, which is not an admin account.</p>
+    <p><a class="btn" style="text-decoration:none;display:inline-block" href="varele-store.html">Back to the store</a></p>
+  </div>
+
+  <div id="app" hidden>
+    <div class="tabs" role="tablist" aria-label="Admin sections">
+      <button role="tab" data-tab="new" aria-selected="true">New <span class="n">0</span></button>
+      <button role="tab" data-tab="store" aria-selected="false">In store <span class="n">0</span></button>
+      <button role="tab" data-tab="hidden" aria-selected="false">Hidden <span class="n">0</span></button>
+      <button role="tab" data-tab="ship" aria-selected="false">Shipping</button>
+      <button role="tab" data-tab="cust" aria-selected="false">Customers</button>
+      <button role="tab" data-tab="conn" aria-selected="false">Connection</button>
+      <button role="tab" data-tab="mgmt" aria-selected="false">Management</button>
+    </div>
+
+    <section id="catview">
+      <details class="imp" id="imp">
+        <summary>Import products from CJ</summary>
+        <div class="in">
+          <label for="q">Search CJ for</label>
+          <input id="q" type="text" placeholder="e.g. sunglasses, watches, bags">
+          <label for="cat">Catalogue (optional, uses the search words if empty)</label>
+          <input id="cat" type="text" placeholder="e.g. Sunglasses">
+          <details class="more">
+            <summary>More options</summary>
+            <div class="row2">
+              <div><label for="mk">Price multiplier</label><input id="mk" type="number" step="0.1" min="1" value="2"></div>
+              <div><label for="n">How many (up to 100)</label><input id="n" type="number" min="1" max="100" value="20"></div>
+            </div>
+            <div class="row2"><div><label for="pg">Page</label><input id="pg" type="number" min="1" value="1"></div></div>
+          </details>
+          <label class="chk"><input type="checkbox" id="autod" checked> Fetch photos, video and description after importing</label>
+          <p><button class="btn" id="sync">Import products</button></p>
+          <div class="msg" id="smsg" role="status"></div>
+        </div>
+      </details>
+      <div class="msg" id="gmsg" role="status" aria-live="polite"></div>
+
+      <input id="find" class="find" type="search" placeholder="Search these products" aria-label="Search these products">
+      <div class="bulk">
+        <label class="vis"><input type="checkbox" id="all"> Select all</label>
+        <span id="selcount" class="note">0 selected</span>
+        <button class="btn" id="bshow" data-for="new hidden">Add to store</button>
+        <button class="ghost" id="bhide" data-for="store">Hide</button>
+        <select id="bcat" aria-label="Move selected to catalogue"></select>
+        <button class="ghost" id="bmove">Move</button>
+        <button class="ghost" id="bdet">Get details</button>
+        <button class="ghost" id="bdel">Delete</button>
+      </div>
+      <div class="msg" id="bmsg" role="status"></div>
+      <div id="list"><p class="empty">Loading…</p></div>
+    </section>
+
+    <section id="shipview" hidden>
+      <h2 style="margin-top:1.2rem">Shipping fees</h2>
+      <p class="note">Customers pick their region in the bag. They pay the first-item fee once, plus the extra-item fee for each additional item. Leave a fee empty to confirm it by email instead. Check CJ's shipping cost for a typical item to each region.</p>
+      <details class="imp" id="rateimp">
+        <summary>Get current rates from CJ</summary>
+        <div class="in">
+          <p class="note">CJ prices shipping per country and per product. This asks CJ what it charges to one typical country in each region (US, Germany, Nigeria, UAE, Brazil, Australia) for the product you pick, and suggests your fees. Pick a typical product, such as an average-weight one.</p>
+          <label for="rateprod">Base the rates on</label>
+          <select id="rateprod"></select>
+          <div class="row2">
+            <div><label for="ratefrom">Ships from</label><select id="ratefrom"><option value="CN">China warehouse</option><option value="US">US warehouse</option></select></div>
+            <div><label for="ratebuf">Safety margin %</label><input id="ratebuf" type="number" min="0" max="100" value="10"></div>
+          </div>
+          <p><button class="btn" id="getrates">Ask CJ</button></p>
+          <div class="msg" id="ratemsg" role="status"></div>
+          <div id="rateres" hidden>
+            <table class="log" id="ratet"><thead><tr><td>Region</td><td>CJ charges</td><td>You charge</td></tr></thead><tbody></tbody></table>
+            <p><button class="btn" id="userates">Use these rates</button></p>
+          </div>
+        </div>
+      </details>
+      <div class="msg" id="shmsg" role="status"></div>
+      <div id="shiplist"></div>
+      <div class="row2" style="margin-top:1.2rem;align-items:end">
+        <div><label for="newregion">Add a region</label><input id="newregion" type="text" placeholder="e.g. Caribbean"></div>
+        <div><button class="btn" id="addregion">Add region</button></div>
+      </div>
+    </section>
+
+    <section id="custview" hidden>
+      <h2 style="margin-top:1.2rem">Customers</h2>
+      <p class="note" id="custnote">Everyone who creates an account or signs in on the store is saved here automatically.</p>
+      <div id="custlist"></div>
+    </section>
+
+    <section id="mgmtview" hidden>
+      <div id="mgate" class="box">
+        <h2>Management</h2>
+        <p class="note">Enter your password to open the management tools.</p>
+        <label for="mpw">Password</label><input id="mpw" type="password" autocomplete="current-password">
+        <p><button class="btn" id="munlock">Unlock</button></p>
+        <div class="msg" id="mmsg" role="status"></div>
+      </div>
+    </section>
+
+    <section id="connview" hidden>
+      <h2 style="margin-top:1.2rem">Connection</h2>
+      <p class="note">Your CJ key is kept safely on the server, so you never type it here.</p>
+      <div class="cards">
+        <div class="card"><span>Database</span><strong id="v-db">–</strong><span id="t-db">Not checked</span></div>
+        <div class="card"><span>CJ link</span><strong id="v-cj">–</strong><span id="t-cj">Not checked</span></div>
+        <div class="card"><span>Last import</span><strong id="v-last">–</strong><span id="t-last">Not checked</span></div>
+      </div>
+      <p><button class="btn" id="check">Run check</button></p>
+      <div class="msg" id="cmsg" role="status"></div>
+      <h2>Recent activity</h2>
+      <table class="log" id="logt"><tbody></tbody></table>
+    </section>
+  </div>
+</main>
+
+<script>
+const sb = supabase.createClient("https://hbejflabmnfvyvxltdxe.supabase.co","sb_publishable_aO_8S0I1kq0IRerRNrDWoA_8gfbvbX_");
+const $ = id => document.getElementById(id);
+const say = (el, text, cls) => { el.textContent = text; el.className = "msg " + (cls||""); };
+const fmt = n => n == null ? "–" : "$" + Number(n).toFixed(2);
+
+// New = never shown in the store yet. In store = visible now. Hidden = was shown before, now off.
+const TABS = {
+  new:    r => !r.active && !r.listed_at,
+  store:  r => r.active,
+  hidden: r => !r.active && !!r.listed_at
+};
+const EMPTY = {
+  new: "Nothing new to review. Import products above and they will appear here.",
+  store: "Nothing is in the store yet. Add products from the New tab.",
+  hidden: "No hidden products."
+};
+let rows = [], cats = [], tab = "new", limit = 60, firstLoad = true;
+
+function ago(iso){
+  const s = (Date.now() - new Date(iso)) / 1000;
+  if(s < 60) return "just now";
+  if(s < 3600) return Math.floor(s/60) + " min ago";
+  if(s < 86400) return Math.floor(s/3600) + " h ago";
+  return Math.floor(s/86400) + " d ago";
+}
+function dayLabel(iso){
+  const d = new Date(iso), t = new Date(), y = new Date(); y.setDate(t.getDate() - 1);
+  if(d.toDateString() === t.toDateString()) return "Imported today";
+  if(d.toDateString() === y.toDateString()) return "Imported yesterday";
+  return "Imported " + d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+// The store and admin share one sign-in, so being signed in on the store is enough
+async function show(){
+  const { data:{ session } } = await sb.auth.getSession();
+  $("login").hidden = !!session; $("app").hidden = true; $("denied").hidden = true; $("out").hidden = !session;
+  if(!session) return;
+  const { data: ok } = await sb.rpc("is_admin");
+  if(ok !== true){ $("who").textContent = session.user.email; $("denied").hidden = false; return; }
+  $("app").hidden = false;
+  load();
+}
+
+async function load(){
+  const [c, p] = await Promise.all([
+    sb.from("catalogues").select("id,name").order("name"),
+    sb.from("products").select("id,cj_pid,name,image_url,images,video_url,cost_price,sell_price,active,catalogue_id,listed_at,created_at,details:raw->>details_fetched_at").order("created_at",{ascending:false}).limit(1000)
+  ]);
+  cats = c.data || [];
+  const bc = $("bcat"); bc.innerHTML = ""; bc.append(new Option("Move to…", ""));
+  for(const x of cats) bc.append(new Option(x.name, x.id));
+  if(p.error){ $("list").innerHTML = ""; const e = document.createElement("p"); e.className = "msg err"; e.textContent = p.error.message; $("list").append(e); return; }
+  rows = p.data || [];
+  if(firstLoad){ firstLoad = false; tab = rows.some(TABS.new) ? "new" : "store"; }
+  render();
+}
+
+function counts(){
+  const n = { new: 0, store: 0, hidden: 0 };
+  for(const r of rows) for(const k in TABS) if(TABS[k](r)) n[k]++;
+  return n;
+}
+
+function render(){
+  const n = counts();
+  document.querySelectorAll(".tabs button").forEach(b => {
+    b.setAttribute("aria-selected", String(b.dataset.tab === tab));
+    const c = b.querySelector(".n"); if(c) c.textContent = n[b.dataset.tab];
+  });
+  const other = { conn: "connview", ship: "shipview", cust: "custview", mgmt: "mgmtview" };
+  $("catview").hidden = tab in other;
+  for(const k in other) $(other[k]).hidden = tab !== k;
+  if(tab in other) return;
+  document.querySelectorAll(".bulk [data-for]").forEach(b => b.hidden = !b.dataset.for.split(" ").includes(tab));
+
+  const term = $("find").value.trim().toLowerCase();
+  let list = rows.filter(TABS[tab]).filter(r => !term || r.name.toLowerCase().includes(term));
+  if(tab !== "new") list = list.slice().sort((a, b) => new Date(b.listed_at || b.created_at) - new Date(a.listed_at || a.created_at));
+
+  const box = $("list"); box.innerHTML = "";
+  if(!list.length){ const p = document.createElement("p"); p.className = "empty"; p.textContent = term ? "Nothing matches that search." : EMPTY[tab]; box.append(p); updateCount(); return; }
+
+  let lastDay = "";
+  for(const r of list.slice(0, limit)){
+    if(tab === "new"){
+      const dl = dayLabel(r.created_at);
+      if(dl !== lastDay){
+        lastDay = dl;
+        const total = list.filter(x => dayLabel(x.created_at) === dl).length;
+        const h = document.createElement("div"); h.className = "day"; h.textContent = dl + " · " + total; box.append(h);
+      }
+    }
+    box.append(row(r));
+  }
+  if(list.length > limit){
+    const more = document.createElement("button"); more.className = "ghost"; more.style.cssText = "margin:1.2rem 0;padding:.6rem 1.2rem";
+    more.textContent = "Show " + Math.min(60, list.length - limit) + " more";
+    more.onclick = () => { limit += 60; render(); };
+    box.append(more);
+  }
+  updateCount();
+}
+
+function row(r){
+  const d = document.createElement("div"); d.className = "p";
+  const sel = document.createElement("input"); sel.type = "checkbox"; sel.className = "sel"; sel.dataset.id = r.id; sel.dataset.pid = r.cj_pid || "";
+  sel.setAttribute("aria-label", "Select " + r.name); sel.onchange = updateCount;
+  const img = document.createElement("img"); img.alt = ""; img.loading = "lazy"; if(r.image_url) img.src = r.image_url;
+
+  const t = document.createElement("div"); t.className = "t";
+  const b = document.createElement("b"); b.textContent = r.name;
+  const meta = document.createElement("small");
+  const showMeta = () => {
+    const profit = r.sell_price != null && r.cost_price != null ? r.sell_price - r.cost_price : null;
+    meta.textContent = "Cost " + fmt(r.cost_price) + (profit != null ? " · You earn " + fmt(profit) : "") +
+      (r.active && r.listed_at ? " · in store since " + new Date(r.listed_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : "") +
+      (tab === "new" ? " · " + ago(r.created_at) : "");
+  };
+  showMeta();
+  const tags = document.createElement("div"); tags.className = "tags";
+  const tag = (txt, cls) => { const s = document.createElement("span"); s.className = "tag " + (cls || ""); s.textContent = txt; tags.append(s); };
+  if(tab === "new") tag("New", "new");
+  const nImg = Array.isArray(r.images) ? r.images.length : 0;
+  if(r.details){ tag(nImg + (nImg === 1 ? " photo" : " photos")); if(r.video_url) tag("Video"); }
+  else tag("Details missing", "warn");
+  if(r.sell_price == null) tag("No price", "warn");
+  t.append(b, meta, tags);
+
+  const c = document.createElement("div"); c.className = "ctl";
+  const pw = document.createElement("label"); pw.className = "price"; pw.append("$");
+  const price = document.createElement("input"); price.type = "number"; price.step = "0.01"; price.min = "0"; price.value = r.sell_price ?? "";
+  price.setAttribute("aria-label", "Selling price for " + r.name); pw.append(price);
+  const cs = document.createElement("select"); cs.setAttribute("aria-label", "Catalogue for " + r.name);
+  cs.append(new Option("No catalogue", "")); for(const x of cats) cs.append(new Option(x.name, x.id)); cs.value = r.catalogue_id || "";
+  const note = document.createElement("span"); note.className = "note";
+  const flash = (error, okText) => { note.textContent = error ? error.message : okText; note.className = "note " + (error ? "err" : "ok"); };
+
+  price.onchange = async () => {
+    const v = price.value === "" ? null : Number(price.value);
+    const { error } = await sb.from("products").update({ sell_price: v, updated_at: new Date().toISOString() }).eq("id", r.id);
+    if(!error){ r.sell_price = v; showMeta(); }
+    flash(error, "Price saved");
+  };
+  cs.onchange = async () => {
+    const { error } = await sb.from("products").update({ catalogue_id: cs.value || null, updated_at: new Date().toISOString() }).eq("id", r.id);
+    if(!error) r.catalogue_id = cs.value || null;
+    flash(error, "Catalogue saved");
+  };
+
+  const main = document.createElement("button");
+  main.className = r.active ? "ghost" : "btn";
+  main.textContent = r.active ? "Hide" : "Add to store";
+  main.onclick = async () => {
+    if(!r.active && r.sell_price == null){ flash({ message: "Set a price first." }); return; }
+    main.disabled = true;
+    const added = !r.active;
+    const { error } = await sb.from("products").update({ active: added, updated_at: new Date().toISOString() }).eq("id", r.id);
+    if(error){ main.disabled = false; return flash(error); }
+    r.active = added; if(added && !r.listed_at) r.listed_at = new Date().toISOString();
+    say($("bmsg"), added ? "Added to the store. Find it under In store." : "Hidden from the store. Find it under Hidden.", "ok");
+    render();
+  };
+  const del = document.createElement("button"); del.className = "ghost"; del.textContent = "Delete";
+  del.onclick = async () => {
+    if(!confirm("Delete this product?")) return;
+    const { error } = await sb.from("products").delete().eq("id", r.id);
+    if(error) return flash(error);
+    rows = rows.filter(x => x !== r); render();
+  };
+  c.append(pw, cs, main);
+  if(r.active){ const v = document.createElement("a"); v.className = "view"; v.href = "varele-store.html#/product/" + encodeURIComponent(r.id); v.target = "_blank"; v.rel = "noopener"; v.textContent = "View"; c.append(v); }
+  c.append(del, note);
+  d.append(sel, img, t, c);
+  return d;
+}
+
+// ---- selection and bulk actions
+const picked = () => [...document.querySelectorAll(".sel:checked")].map(x => x.dataset.id);
+function updateCount(){
+  const all = document.querySelectorAll(".sel").length, n = picked().length;
+  $("selcount").textContent = n + " selected";
+  $("all").checked = all > 0 && n === all;
+}
+$("all").onchange = () => { document.querySelectorAll(".sel").forEach(x => x.checked = $("all").checked); updateCount(); };
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  tab = b.dataset.tab; limit = 60; say($("bmsg"), ""); render();
+  if(tab === "conn") runCheck();
+  if(tab === "ship") loadShip();
+  if(tab === "cust") loadCust();
+  if(tab === "mgmt") openMgmt();
+});
+$("find").oninput = () => { limit = 60; render(); };
+
+async function bulk(kind){
+  const ids = picked();
+  if(!ids.length) return say($("bmsg"), "Select at least one product first.", "err");
+  if(kind === "delete" && !confirm("Delete " + ids.length + " products for good?")) return;
+  if(kind === "move" && !$("bcat").value) return say($("bmsg"), "Choose a catalogue to move them to.", "err");
+  if(kind === "show"){
+    const noPrice = rows.filter(r => ids.includes(r.id) && r.sell_price == null).length;
+    if(noPrice) return say($("bmsg"), noPrice + " of these have no price yet. Set a price first.", "err");
+  }
+  say($("bmsg"), "Working…");
+  const now = new Date().toISOString();
+  const q = kind === "move" ? sb.from("products").update({ catalogue_id: $("bcat").value, updated_at: now }).in("id", ids)
+    : kind === "delete" ? sb.from("products").delete().in("id", ids)
+    : sb.from("products").update({ active: kind === "show", updated_at: now }).in("id", ids);
+  const { error } = await q;
+  if(error) return say($("bmsg"), error.message, "err");
+  say($("bmsg"), ids.length + (kind === "move" ? " moved." : kind === "delete" ? " deleted." : kind === "show" ? " added to the store." : " hidden."), "ok");
+  // Update the rows already on screen instead of re-downloading the whole product list
+  if(kind === "delete"){ rows = rows.filter(r => !ids.includes(r.id)); }
+  else for(const r of rows){
+    if(!ids.includes(r.id)) continue;
+    if(kind === "move") r.catalogue_id = $("bcat").value || null;
+    else { r.active = kind === "show"; if(r.active && !r.listed_at) r.listed_at = now; }
+  }
+  render();
+}
+$("bshow").onclick = () => bulk("show");
+$("bhide").onclick = () => bulk("hide");
+$("bdel").onclick = () => bulk("delete");
+$("bmove").onclick = () => bulk("move");
+
+// ---- edge function helpers
+async function fnError(error){
+  let detail = error.message;
+  try { const j = await error.context.json(); if(j.error) detail = j.error; } catch(e){}
+  return detail;
+}
+
+// Pulls photos, video, description and options from CJ a few products at a time
+async function getDetails(pids, out){
+  let done = 0, failed = 0, rounds = 0;
+  while(true){
+    const chunk = pids ? pids.slice(done + failed, done + failed + 8) : null;
+    if(pids && !chunk.length) break;
+    say(out, "Getting photos, video and descriptions… " + done + " done");
+    const { data, error } = await sb.functions.invoke("cj-product-details", { body: pids ? { pids: chunk } : { limit: 8 } });
+    if(error){ say(out, await fnError(error), "err"); return false; }
+    if(data.error){ say(out, data.error, "err"); return false; }
+    done += data.enriched || 0; failed += (data.errors || []).length;
+    if(!pids && (!data.enriched || !data.remaining || ++rounds >= 12)) break;
+    if(pids && !data.enriched && !(data.errors || []).length) break;
+  }
+  say(out, done + " products updated with photos, video and description." + (failed ? " " + failed + " could not be fetched." : ""), failed && !done ? "err" : "ok");
+  await load();
+  return true;
+}
+$("bdet").onclick = async () => {
+  const pids = [...document.querySelectorAll(".sel:checked")].map(x => x.dataset.pid).filter(Boolean);
+  if(!pids.length) return say($("bmsg"), "Select at least one product first.", "err");
+  const btn = $("bdet"); btn.disabled = true; await getDetails(pids, $("bmsg")); btn.disabled = false;
+};
+
+// ---- sign in / out
+$("go").onclick = async () => {
+  say($("lmsg"), "Signing in…");
+  const { error } = await sb.auth.signInWithPassword({ email: $("em").value.trim(), password: $("pw").value });
+  if(error) return say($("lmsg"), error.message, "err");
+  $("pw").value = ""; say($("lmsg"), ""); show();
+};
+$("out").onclick = async () => { await sb.auth.signOut(); firstLoad = true; mgmtUnlocked = false; show(); };
+
+// ---- management (password-protected)
+let mgmtUnlocked = false;
+function openMgmt(){
+  if(mgmtUnlocked){ location.href = "varele-manage.html"; return; }
+  $("mgate").hidden = false; $("mpw").focus();
+}
+$("munlock").onclick = async () => {
+  const pw = $("mpw").value;
+  if(!pw) return say($("mmsg"), "Enter your password.", "err");
+  say($("mmsg"), "Checking…");
+  const { data: { user } } = await sb.auth.getUser();
+  const { error } = await sb.auth.signInWithPassword({ email: user.email, password: pw });
+  if(error) return say($("mmsg"), "That password isn't right.", "err");
+  $("mpw").value = ""; say($("mmsg"), "");
+  mgmtUnlocked = true;
+  location.href = "varele-manage.html";
+};
+$("mpw").onkeydown = e => { if(e.key === "Enter") $("munlock").click(); };
+
+// ---- import
+$("sync").onclick = async () => {
+  if(!$("q").value.trim()) return say($("smsg"), "Type what to search CJ for first.", "err");
+  const btn = $("sync"); btn.disabled = true; say($("smsg"), "Importing from CJ…");
+  const page = Number($("pg").value) || 1;
+  const { data, error } = await sb.functions.invoke("cj-sync", { body: { query: $("q").value.trim(), markup: Number($("mk").value) || 2, pageSize: Number($("n").value) || 20, page, catalogue: $("cat").value.trim() || undefined } });
+  btn.disabled = false;
+  if(error) return say($("smsg"), await fnError(error), "err");
+  if(data.error) return say($("smsg"), data.error, "err");
+  say($("smsg"), "");
+  $("imp").open = false; tab = "new"; limit = 60; $("find").value = "";
+  if(data.hasMore) $("pg").value = page + 1;
+  const summary = data.added + " new in " + data.catalogue + (data.updated ? ", " + data.updated + " already here" : "") + ". New ones stay hidden until you add them to the store." + (data.hasMore ? " More are available: open Import and press the button again for the next page." : "");
+  say($("gmsg"), summary, "ok");
+  await load();
+  if($("autod").checked && data.added){
+    const ok = await getDetails(null, $("gmsg"));
+    if(ok && $("gmsg").classList.contains("ok")) say($("gmsg"), summary + " Photos and descriptions are filled in.", "ok");
+  }
+};
+
+// ---- shipping tab (regions and fees)
+// ---- ask CJ for current shipping rates and suggest fees
+let rateSuggest = [];
+function fillRateProducts(){
+  const sel = $("rateprod"); const keep = sel.value; sel.innerHTML = "";
+  const list = rows.filter(r => r.cj_pid).sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0));
+  if(!list.length) sel.append(new Option("No products yet. Import some first.", ""));
+  for(const r of list) sel.append(new Option((r.active ? "" : "(not in store) ") + r.name.slice(0, 60), r.cj_pid));
+  if(keep) sel.value = keep;
+}
+function showSuggest(){
+  const buf = Math.max(0, Number($("ratebuf").value) || 0) / 100;
+  const body = $("ratet").tBodies[0]; body.innerHTML = "";
+  for(const x of rateSuggest){
+    const tr = document.createElement("tr");
+    const a = document.createElement("td"); a.textContent = x.region + (x.country ? " (" + x.country + ")" : "");
+    const b = document.createElement("td"); const c = document.createElement("td");
+    if(x.error){ b.textContent = x.error; b.className = "err"; b.colSpan = 2; tr.append(a, b); }
+    else {
+      x.use_fee = Math.round(x.fee * (1 + buf) * 100) / 100; x.use_extra = Math.round(x.extra_fee * (1 + buf) * 100) / 100;
+      b.textContent = fmt(x.fee) + (x.extra_fee ? " + " + fmt(x.extra_fee) + " each extra" : "") + (x.days ? " · " + x.days + " days" : "");
+      c.textContent = fmt(x.use_fee) + (x.use_extra ? " + " + fmt(x.use_extra) + " each extra" : "");
+      tr.append(a, b, c);
+    }
+    body.append(tr);
+  }
+  $("rateres").hidden = !rateSuggest.length;
+}
+$("ratebuf").oninput = showSuggest;
+$("getrates").onclick = async () => {
+  if(!$("rateprod").value) return say($("ratemsg"), "Pick a product first.", "err");
+  const btn = $("getrates"); btn.disabled = true; say($("ratemsg"), "Asking CJ… this takes about 15 seconds.");
+  const { data, error } = await sb.functions.invoke("cj-shipping", { body: { cj_pid: $("rateprod").value, from: $("ratefrom").value } });
+  btn.disabled = false;
+  if(error) return say($("ratemsg"), await fnError(error), "err");
+  if(data.error) return say($("ratemsg"), data.error, "err");
+  rateSuggest = data.results || [];
+  const okN = rateSuggest.filter(x => !x.error).length;
+  say($("ratemsg"), okN ? "CJ quoted " + okN + " of " + rateSuggest.length + " regions for " + data.product.slice(0, 50) + ". Check them, then press Use these rates." : "CJ could not quote any region for this product.", okN ? "ok" : "err");
+  showSuggest();
+};
+$("userates").onclick = async () => {
+  const todo = rateSuggest.filter(x => !x.error && x.use_fee != null);
+  if(!todo.length) return;
+  $("userates").disabled = true; let bad = null;
+  for(const x of todo){
+    const { error } = await sb.from("shipping_rates").update({ fee: x.use_fee, extra_fee: x.use_extra, updated_at: new Date().toISOString() }).eq("name", x.region);
+    if(error){ bad = error; break; }
+  }
+  $("userates").disabled = false;
+  if(bad) return say($("ratemsg"), bad.message, "err");
+  say($("ratemsg"), "Saved " + todo.length + " regions. Customers see the new fees straight away.", "ok");
+  rateSuggest = []; showSuggest(); loadShip();
+};
+
+async function loadShip(){
+  fillRateProducts();
+  const { data, error } = await sb.from("shipping_rates").select("id,name,fee,extra_fee,active,sort").order("sort").order("name");
+  const box = $("shiplist"); box.innerHTML = "";
+  if(error) return say($("shmsg"), error.message, "err");
+  say($("shmsg"), "");
+  if(!data.length){ const p = document.createElement("p"); p.className = "empty"; p.textContent = "No regions yet. Add one below."; box.append(p); }
+  for(const r of data){
+    const row = document.createElement("div"); row.className = "sr";
+    const name = document.createElement("input"); name.type = "text"; name.value = r.name; name.className = "nm"; name.setAttribute("aria-label", "Region name");
+    const mk = (val, label) => { const w = document.createElement("label"); w.className = "money"; w.append("$"); const i = document.createElement("input"); i.type = "number"; i.step = "0.01"; i.min = "0"; i.value = val ?? ""; i.placeholder = "–"; i.setAttribute("aria-label", label + " for " + r.name); w.append(i); return [w, i]; };
+    const [fw, fee] = mk(r.fee, "First item fee"), [ew, extra] = mk(r.extra_fee, "Extra item fee");
+    const act = document.createElement("label"); act.className = "vis"; const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = r.active; act.append(cb, " Offered");
+    const del = document.createElement("button"); del.className = "ghost"; del.textContent = "Delete"; del.style.padding = ".4rem .8rem";
+    const lab = document.createElement("small"); lab.textContent = "First item · each extra item";
+    const note = document.createElement("span"); note.className = "note";
+    const save = async patch => {
+      const { error } = await sb.from("shipping_rates").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", r.id);
+      note.textContent = error ? error.message : "Saved"; note.className = "note " + (error ? "err" : "ok");
+    };
+    name.onchange = () => name.value.trim() ? save({ name: name.value.trim() }) : (name.value = r.name);
+    fee.onchange = () => save({ fee: fee.value === "" ? null : Number(fee.value) });
+    extra.onchange = () => save({ extra_fee: extra.value === "" ? 0 : Number(extra.value) });
+    cb.onchange = () => save({ active: cb.checked });
+    del.onclick = async () => { if(!confirm("Delete " + r.name + "?")) return; const { error } = await sb.from("shipping_rates").delete().eq("id", r.id); if(error) return say($("shmsg"), error.message, "err"); loadShip(); };
+    const acts = document.createElement("div"); acts.className = "acts"; acts.append(act, del, note);
+    row.append(name, fw, ew, lab, acts); box.append(row);
+  }
+}
+$("addregion").onclick = async () => {
+  const n = $("newregion").value.trim();
+  if(!n) return say($("shmsg"), "Type a region name first.", "err");
+  const { error } = await sb.from("shipping_rates").insert({ name: n, sort: 99 });
+  if(error) return say($("shmsg"), error.message, "err");
+  $("newregion").value = ""; await loadShip(); say($("shmsg"), n + " added. Set its fees below.", "ok");
+};
+
+// ---- customers tab (saved automatically when people sign up or sign in on the store)
+async function loadCust(){
+  const { data, error } = await sb.from("profiles").select("id,email,full_name,provider,created_at,last_sign_in_at").order("created_at",{ascending:false}).limit(500);
+  const box = $("custlist"); box.innerHTML = "";
+  if(error){ const p = document.createElement("p"); p.className = "msg err"; p.textContent = error.message; box.append(p); return; }
+  const week = Date.now() - 7*86400e3;
+  $("custnote").textContent = data.length + (data.length === 1 ? " customer" : " customers") + " · " + data.filter(c => c.last_sign_in_at && new Date(c.last_sign_in_at) > week).length + " signed in this week. People appear here as soon as they create an account.";
+  if(!data.length){ const p = document.createElement("p"); p.className = "empty"; p.textContent = "No customers yet."; box.append(p); return; }
+  for(const c of data){
+    const d = document.createElement("div"); d.className = "cu";
+    const a = document.createElement("div"); const b = document.createElement("b"); b.textContent = c.full_name || "No name given"; const sm = document.createElement("small"); sm.style.display = "block"; sm.textContent = c.email + (c.provider ? " · " + c.provider : ""); a.append(b, sm);
+    const r = document.createElement("div"); r.className = "r"; const j = document.createElement("small"); j.style.display = "block"; j.textContent = "Joined " + new Date(c.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+    const l = document.createElement("small"); l.style.display = "block"; l.textContent = c.last_sign_in_at ? "Signed in " + ago(c.last_sign_in_at) : "Never signed in"; r.append(j, l);
+    d.append(a, r); box.append(d);
+  }
+}
+
+// ---- connection tab
+let checking = false;
+async function runCheck(){
+  if(checking) return; checking = true; $("check").disabled = true; say($("cmsg"), "Checking…");
+  const t0 = performance.now();
+  const db = await sb.from("catalogues").select("id").limit(1);
+  const dbMs = Math.round(performance.now() - t0);
+  $("v-db").textContent = db.error ? "Error" : dbMs + " ms"; $("t-db").textContent = db.error ? db.error.message : "Connected";
+
+  const t1 = performance.now();
+  const { data, error } = await sb.functions.invoke("cj-sync", { body: { ping: true } });
+  const cjMs = Math.round(performance.now() - t1);
+  let cjOk = false;
+  if(error){ $("v-cj").textContent = "Error"; $("t-cj").textContent = await fnError(error); }
+  else if(data.connected){ cjOk = true; $("v-cj").textContent = cjMs + " ms"; $("t-cj").textContent = data.accessExpires ? "Connected · token valid until " + new Date(data.accessExpires).toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : "Connected"; }
+  else { $("v-cj").textContent = "Not linked"; $("t-cj").textContent = data.error || "Could not reach CJ"; }
+
+  const lg = await sb.from("cj_sync_log").select("status,message,synced,created_at").order("created_at",{ascending:false}).limit(12);
+  const body = $("logt").tBodies[0]; body.innerHTML = "";
+  const logs = lg.data || [];
+  const lastOk = logs.find(x => x.status === "ok");
+  $("v-last").textContent = lastOk ? ago(lastOk.created_at) : "–"; $("t-last").textContent = lastOk ? lastOk.message : "No imports yet";
+  for(const x of logs){
+    const tr = document.createElement("tr");
+    const a = document.createElement("td"); a.textContent = ago(x.created_at);
+    const m = document.createElement("td"); m.textContent = x.message; if(x.status !== "ok") m.className = "err";
+    tr.append(a, m); body.append(tr);
+  }
+  const allOk = !db.error && cjOk;
+  say($("cmsg"), allOk ? "Everything is connected." : (!cjOk ? "The CJ link needs attention. If it says the key is missing, add CJ_API_KEY under Supabase → Edge Functions → Secrets." : "The database check failed."), allOk ? "ok" : "err");
+  checking = false; $("check").disabled = false;
+}
+$("check").onclick = runCheck;
+
+show();
+</script>
+</body>
+</html>

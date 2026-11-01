@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Student Business</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; background: #f6f7fb; color: #1b1f2a; }
+  header { background: #1b1f2a; color: #fff; padding: 12px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  header a { color: #fff; text-decoration: none; margin-right: 12px; }
+  header .spacer { flex: 1; }
+  main { max-width: 760px; margin: 0 auto; padding: 16px; }
+  .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  h1 { font-size: 1.4rem; margin: 8px 0 12px; }
+  h2 { font-size: 1.1rem; margin: 8px 0; }
+  label { display: block; font-size: .9rem; margin: 10px 0 4px; }
+  input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccd0da; border-radius: 8px; font: inherit; }
+  textarea { min-height: 80px; }
+  button { background: #3857f0; color: #fff; border: 0; padding: 10px 14px; border-radius: 8px; font: inherit; cursor: pointer; margin-top: 10px; }
+  button.secondary { background: #e5e8f2; color: #1b1f2a; }
+  button.danger { background: #c0392b; }
+  .muted { color: #6b7280; font-size: .9rem; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: .8rem; background: #e5e8f2; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .error { color: #c0392b; margin-top: 8px; }
+  .ok { color: #1e8e3e; margin-top: 8px; }
+  a.card { display: block; color: inherit; text-decoration: none; }
+</style>
+</head>
+<body>
+<header>
+  <strong>Student Business</strong>
+  <a href="#/browse">Browse</a>
+  <a href="#/create">Create business</a>
+  <a href="#/bookings">My bookings</a>
+  <a href="#/dashboard">Dashboard</a>
+  <span class="spacer"></span>
+  <a href="#/auth" id="nav-auth">Log in</a>
+  <a href="#" id="nav-logout" style="display:none">Log out</a>
+</header>
+<main id="app"><p class="muted">Loading...</p></main>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+// ---- Paste your values here (Supabase > Project Settings > API) ----
+const SUPABASE_URL = 'https://msrxiamnaiptaplxggwk.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+// ---------------------------------------------------------------------
+
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const app = document.getElementById('app');
+let user = null;
+
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const money = (n) => Number(n).toLocaleString(undefined, { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 });
+const fmtDate = (d) => new Date(d).toLocaleString();
+const showMsg = (text, ok = false) => {
+  const el = document.getElementById('msg');
+  if (el) el.innerHTML = `<div class="${ok ? 'ok' : 'error'}">${esc(text)}</div>`;
+};
+
+async function refreshUser() {
+  const { data } = await sb.auth.getSession();
+  user = data.session?.user ?? null;
+  document.getElementById('nav-auth').style.display = user ? 'none' : '';
+  document.getElementById('nav-logout').style.display = user ? '' : 'none';
+}
+
+document.getElementById('nav-logout').onclick = async (e) => {
+  e.preventDefault();
+  await sb.auth.signOut();
+  location.hash = '#/browse';
+};
+
+sb.auth.onAuthStateChange(() => route());
+
+// ---------- Routing ----------
+async function route() {
+  await refreshUser();
+  const [, page, id] = location.hash.split('/');
+  if (['create', 'bookings', 'dashboard'].includes(page) && !user) { location.hash = '#/auth'; return; }
+  if (page === 'auth') return renderAuth();
+  if (page === 'create') return renderCreate();
+  if (page === 'bookings') return renderBookings();
+  if (page === 'dashboard') return renderDashboard();
+  if (page === 'business' && id) return renderBusiness(id);
+  return renderBrowse();
+}
+window.addEventListener('hashchange', route);
+
+// ---------- Auth ----------
+function renderAuth() {
+  app.innerHTML = `
+    <div class="card">
+      <h1>Log in or sign up</h1>
+      <label>Full name (for sign up)</label><input id="name" />
+      <label>Email</label><input id="email" type="email" />
+      <label>Password (min 6 characters)</label><input id="password" type="password" />
+      <div class="row">
+        <button id="login">Log in</button>
+        <button id="signup" class="secondary">Sign up</button>
+      </div>
+      <div id="msg"></div>
+    </div>`;
+  const email = document.getElementById('email');
+  const password = document.getElementById('password');
+  const name = document.getElementById('name');
+
+  document.getElementById('login').onclick = async () => {
+    const { error } = await sb.auth.signInWithPassword({ email: email.value.trim(), password: password.value });
+    if (error) return showMsg(error.message);
+    location.hash = '#/browse';
+  };
+  document.getElementById('signup').onclick = async () => {
+    const { error } = await sb.auth.signUp({
+      email: email.value.trim(),
+      password: password.value,
+      options: { data: { full_name: name.value.trim() } },
+    });
+    if (error) return showMsg(error.message);
+    showMsg('Account created. If email confirmation is on, check your inbox, then log in.', true);
+  };
+}
+
+// ---------- Browse ----------
+async function renderBrowse() {
+  app.innerHTML = '<p class="muted">Loading businesses...</p>';
+  const { data, error } = await sb.from('businesses')
+    .select('id, name, category, campus_area, description')
+    .eq('is_published', true)
+    .order('created_at', { ascending: false });
+  if (error) { app.innerHTML = `<p class="error">${esc(error.message)}</p>`; return; }
+  app.innerHTML = `<h1>Student businesses</h1>` + (data.length ? data.map(b => `
+    <a class="card" href="#/business/${b.id}">
+      <strong>${esc(b.name)}</strong> <span class="pill">${esc(b.category)}</span>
+      <div class="muted">${esc(b.campus_area || '')}</div>
+      <div>${esc((b.description || '').slice(0, 120))}</div>
+    </a>`).join('') : '<p class="muted">No businesses yet. Be the first to create one.</p>');
+}
+
+// ---------- Business page + booking ----------
+async function renderBusiness(id) {
+  app.innerHTML = '<p class="muted">Loading...</p>';
+  const [{ data: biz, error: e1 }, { data: services }] = await Promise.all([
+    sb.from('businesses').select('*').eq('id', id).single(),
+    sb.from('services').select('*').eq('business_id', id).eq('is_active', true),
+  ]);
+  if (e1) { app.innerHTML = `<p class="error">${esc(e1.message)}</p>`; return; }
+
+  const isOwner = user && biz.owner_id === user.id;
+  const list = services || [];
+
+  let bookingSection = '';
+  if (isOwner) bookingSection = '<p class="muted">This is your business.</p>';
+  else if (!user) bookingSection = '<p><a href="#/auth">Log in</a> to book.</p>';
+  else if (list.length) bookingSection = bookingForm(list);
+
+  app.innerHTML = `
+    <div class="card">
+      <h1>${esc(biz.name)} <span class="pill">${esc(biz.category)}</span></h1>
+      <div class="muted">${esc(biz.campus_area || '')}</div>
+      <p>${esc(biz.description || '')}</p>
+      ${biz.phone ? `<div>Phone: ${esc(biz.phone)}</div>` : ''}
+      ${biz.whatsapp ? `<div>WhatsApp: ${esc(biz.whatsapp)}</div>` : ''}
+      <p class="muted">Payment is arranged directly with the business, outside the app.</p>
+    </div>
+    <div class="card">
+      <h2>Services</h2>
+      ${list.map(s => `
+        <div class="row" style="justify-content:space-between">
+          <div><strong>${esc(s.title)}</strong> <span class="muted">${s.duration_minutes} min</span>
+            <div class="muted">${esc(s.description || '')}</div></div>
+          <div>${money(s.price)}</div>
+        </div>`).join('') || '<p class="muted">No services listed.</p>'}
+    </div>
+    ${bookingSection}
+    <div id="msg"></div>`;
+
+  if (!isOwner && user && list.length) {
+    document.getElementById('book').onclick = async () => {
+      const serviceId = document.getElementById('service').value;
+      const date = document.getElementById('date').value;
+      const time = document.getElementById('time').value;
+      const note = document.getElementById('note').value.trim();
+      if (!date || !time) return showMsg('Pick a date and time.');
+
+      const service = list.find(s => s.id === serviceId);
+      const starts = new Date(`${date}T${time}`);
+      const ends = new Date(starts.getTime() + service.duration_minutes * 60000);
+      const { error } = await sb.from('bookings').insert({
+        business_id: id,
+        service_id: serviceId,
+        customer_id: user.id,
+        starts_at: starts.toISOString(),
+        ends_at: ends.toISOString(),
+        status: 'pending',
+        customer_note: note || null,
+      });
+      if (error) return showMsg(error.message);
+      showMsg('Request sent. The business will confirm or decline it.', true);
+    };
+  }
+}
+
+function bookingForm(services) {
+  return `
+    <div class="card">
+      <h2>Book this business</h2>
+      <label>Service</label>
+      <select id="service">${services.map(s => `<option value="${s.id}">${esc(s.title)} (${money(s.price)})</option>`).join('')}</select>
+      <label>Date</label><input id="date" type="date" />
+      <label>Time</label><input id="time" type="time" />
+      <label>Note (optional)</label><textarea id="note"></textarea>
+      <button id="book">Send booking request</button>
+    </div>`;
+}
+
+// ---------- Create business ----------
+function renderCreate() {
+  app.innerHTML = `
+    <div class="card">
+      <h1>Create your business</h1>
+      <label>Business name</label><input id="bname" />
+      <label>Category</label><input id="category" placeholder="e.g. Design, Tailoring, Tutoring" />
+      <label>Description</label><textarea id="desc"></textarea>
+      <label>Campus area</label><input id="area" placeholder="e.g. Ugbowo" />
+      <label>Phone</label><input id="phone" />
+      <label>WhatsApp</label><input id="wa" />
+      <h2>First service</h2>
+      <label>Service title</label><input id="stitle" />
+      <label>Price</label><input id="sprice" type="number" min="0" step="0.01" />
+      <label>Duration (minutes)</label><input id="sdur" type="number" min="5" value="60" />
+      <label><input type="checkbox" id="publish" style="width:auto"> Publish now</label>
+      <button id="save">Create business</button>
+      <p class="muted">You can add more services and hours from the Dashboard.</p>
+      <div id="msg"></div>
+    </div>`;
+
+  document.getElementById('save').onclick = async () => {
+    const name = document.getElementById('bname').value.trim();
+    const category = document.getElementById('category').value.trim();
+    if (!name || !category) return showMsg('Name and category are required.');
+
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      + '-' + Math.random().toString(36).slice(2, 6);
+    const { data: biz, error } = await sb.from('businesses').insert({
+      owner_id: user.id,
+      name,
+      slug,
+      category,
+      description: document.getElementById('desc').value.trim() || null,
+      campus_area: document.getElementById('area').value.trim() || null,
+      phone: document.getElementById('phone').value.trim() || null,
+      whatsapp: document.getElementById('wa').value.trim() || null,
+      is_published: document.getElementById('publish').checked,
+    }).select().single();
+    if (error) return showMsg(error.message);
+
+    const title = document.getElementById('stitle').value.trim();
+    if (title) {
+      const { error: e2 } = await sb.from('services').insert({
+        business_id: biz.id,
+        title,
+        price: Number(document.getElementById('sprice').value || 0),
+        duration_minutes: Number(document.getElementById('sdur').value || 60),
+      });
+      if (e2) return showMsg('Business saved, but the service failed: ' + e2.message);
+    }
+    location.hash = '#/dashboard';
+  };
+}
+
+// ---------- My bookings (customer) ----------
+async function renderBookings() {
+  app.innerHTML = '<p class="muted">Loading...</p>';
+  const { data, error } = await sb.from('bookings')
+    .select('id, status, starts_at, business:businesses(name), service:services(title)')
+    .eq('customer_id', user.id)
+    .order('starts_at', { ascending: false });
+  if (error) { app.innerHTML = `<p class="error">${esc(error.message)}</p>`; return; }
+
+  app.innerHTML = `<h1>My bookings</h1>` + (data.length ? data.map(b => `
+    <div class="card">
+      <strong>${esc(b.service?.title)}</strong> at ${esc(b.business?.name)}
+      <div class="muted">${fmtDate(b.starts_at)}</div>
+      <span class="pill">${esc(b.status)}</span>
+      ${['pending', 'confirmed'].includes(b.status)
+        ? `<div><button class="danger" data-action="cancelled" data-id="${b.id}">Cancel</button></div>` : ''}
+    </div>`).join('') : '<p class="muted">No bookings yet.</p>') + '<div id="msg"></div>';
+  wireStatusButtons();
+}
+
+// ---------- Dashboard (owner) ----------
+async function renderDashboard() {
+  app.innerHTML = '<p class="muted">Loading...</p>';
+  const { data: businesses, error } = await sb.from('businesses').select('*').eq('owner_id', user.id);
+  if (error) { app.innerHTML = `<p class="error">${esc(error.message)}</p>`; return; }
+  if (!businesses.length) {
+    app.innerHTML = '<p class="muted">You have no businesses yet. <a href="#/create">Create one</a>.</p>';
+    return;
+  }
+
+  const { data: bookings } = await sb.from('bookings')
+    .select('id, status, starts_at, business_id, service:services(title), customer:profiles(full_name)')
+    .in('business_id', businesses.map(b => b.id))
+    .order('starts_at', { ascending: true });
+
+  app.innerHTML = `<h1>Your dashboard</h1>` + businesses.map(b => `
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div><strong>${esc(b.name)}</strong> <span class="pill">${esc(b.category)}</span></div>
+        <div class="row">
+          <span class="muted">${b.is_published ? 'Published' : 'Draft'}</span>
+          <button class="secondary" data-publish="${b.id}" data-value="${!b.is_published}">
+            ${b.is_published ? 'Unpublish' : 'Publish'}</button>
+          <a href="#/business/${b.id}">View</a>
+        </div>
+      </div>
+      <h2>Booking requests</h2>
+      ${(bookings || []).filter(x => x.business_id === b.id).map(x => `
+        <div class="card" style="margin:8px 0">
+          <strong>${esc(x.service?.title)}</strong> from ${esc(x.customer?.full_name || 'Student')}
+          <div class="muted">${fmtDate(x.starts_at)}</div>
+          <span class="pill">${esc(x.status)}</span>
+          <div class="row">
+            ${x.status === 'pending'
+              ? `<button data-action="confirmed" data-id="${x.id}">Accept</button>
+                 <button class="danger" data-action="declined" data-id="${x.id}">Decline</button>` : ''}
+            ${x.status === 'confirmed'
+              ? `<button data-action="completed" data-id="${x.id}">Mark complete</button>` : ''}
+          </div>
+        </div>`).join('') || '<p class="muted">No requests yet.</p>'}
+    </div>`).join('') + '<div id="msg"></div>';
+
+  wireStatusButtons();
+  document.querySelectorAll('[data-publish]').forEach(btn => {
+    btn.onclick = async () => {
+      const { error } = await sb.from('businesses')
+        .update({ is_published: btn.dataset.value === 'true' })
+        .eq('id', btn.dataset.publish);
+      if (error) return showMsg(error.message);
+      renderDashboard();
+    };
+  });
+}
+
+// Booking status changes always go through the set_booking_status function
+function wireStatusButtons() {
+  document.querySelectorAll('[data-action]').forEach(btn => {
+    btn.onclick = async () => {
+      const { error } = await sb.rpc('set_booking_status', {
+        p_booking: btn.dataset.id,
+        p_status: btn.dataset.action,
+      });
+      if (error) return showMsg(error.message);
+      route();
+    };
+  });
+}
+
+route();
+</script>
+</body>
+</html>
